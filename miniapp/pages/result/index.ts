@@ -22,12 +22,12 @@ Page({
     if (!this.data.artifact || this.data.opening) return
     this.setData({ opening: true })
     try {
-	  const result = await new Promise<WechatMiniprogram.DownloadFileSuccessCallbackResult>((resolve, reject) => {
-	    wx.downloadFile({ url: this.data.artifact!.download_url, success: resolve, fail: reject })
-	  })
-	  await new Promise<void>((resolve, reject) => {
-	    wx.openDocument({ filePath: result.tempFilePath, fileType: 'pdf', showMenu: true, success: () => resolve(), fail: reject })
-	  })
+      const result = await new Promise<WechatMiniprogram.DownloadFileSuccessCallbackResult>((resolve, reject) => {
+        wx.downloadFile({ url: this.data.artifact!.download_url, success: resolve, fail: reject })
+      })
+      await new Promise<void>((resolve, reject) => {
+        wx.openDocument({ filePath: result.tempFilePath, fileType: 'pdf', showMenu: true, success: () => resolve(), fail: reject })
+      })
     } catch (error) {
       this.setData({ error: error instanceof Error ? error.message : 'PDF打开失败' })
     } finally {

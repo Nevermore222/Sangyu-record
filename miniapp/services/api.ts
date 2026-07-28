@@ -79,10 +79,10 @@ export class APIError extends Error {
 function wxRequest(options: RequestOptions): Promise<RequestResponse> {
   return new Promise((resolve, reject) => {
     wx.request({
-	  url: options.url,
-	  method: options.method,
-	  data: options.data as string | ArrayBuffer | WechatMiniprogram.IAnyObject | undefined,
-	  header: options.header,
+      url: options.url,
+      method: options.method,
+      data: options.data as string | ArrayBuffer | WechatMiniprogram.IAnyObject | undefined,
+      header: options.header,
       success: (response) => resolve({ statusCode: response.statusCode, data: response.data }),
       fail: reject
     })

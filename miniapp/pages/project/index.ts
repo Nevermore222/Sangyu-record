@@ -19,7 +19,10 @@ Page({
   },
 
   onUnload() {
-    if (pollTimer !== undefined) clearInterval(pollTimer)
+    if (pollTimer !== undefined) {
+      clearInterval(pollTimer)
+      pollTimer = undefined
+    }
   },
 
   async refresh() {

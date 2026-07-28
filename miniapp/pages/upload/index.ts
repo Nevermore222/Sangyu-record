@@ -1,6 +1,8 @@
 import { api } from '../../services/client'
 
 const recorder = wx.getRecorderManager()
+let handleRecorderStop: Parameters<typeof recorder.onStop>[0] | undefined
+recorder.onStop((result) => handleRecorderStop?.(result))
 
 Page({
   data: {
@@ -11,10 +13,15 @@ Page({
 
   onLoad(options: Record<string, string | undefined>) {
     this.setData({ projectID: options.id || '' })
-    recorder.onStop((result) => {
-	  const info = wx.getFileSystemManager().statSync(result.tempFilePath) as WechatMiniprogram.Stats
+    handleRecorderStop = (result) => {
+      const info = wx.getFileSystemManager().statSync(result.tempFilePath) as WechatMiniprogram.Stats
       this.setData({ recording: false, audioPath: result.tempFilePath, audioSize: info.size, progressText: '录音已就绪' })
-    })
+    }
+  },
+
+  onUnload() {
+    handleRecorderStop = undefined
+    if (this.data.recording) recorder.stop()
   },
 
   toggleRecord() {
