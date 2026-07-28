@@ -11,6 +11,8 @@ import (
 
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/httpapi"
+	"github.com/nevermore222/sangyu-record/internal/platform"
+	"github.com/nevermore222/sangyu-record/internal/projects"
 )
 
 func main() {
@@ -18,10 +20,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	startupCtx, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelStartup()
+	pool, err := platform.OpenPostgres(startupCtx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(startupCtx); err != nil {
+		log.Fatal(err)
+	}
+
+	projectRepo := projects.NewPostgresRepository(pool)
+	projectService := projects.NewService(projectRepo, projects.DeterministicPlanner{})
+	projectHandler := projects.NewHandler(projectService)
 
 	server := &http.Server{
-		Addr:              cfg.HTTPAddress,
-		Handler:           httpapi.NewRouter(httpapi.Dependencies{}),
+		Addr: cfg.HTTPAddress,
+		Handler: httpapi.NewRouter(httpapi.Dependencies{
+			Projects: projectHandler.Routes(),
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
