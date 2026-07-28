@@ -1,4 +1,4 @@
-.PHONY: test vet infra-up infra-down migrate
+.PHONY: test vet infra-up infra-down migrate miniapp-test skill-test smoke
 
 test:
 	go test ./...
@@ -14,3 +14,13 @@ infra-down:
 
 migrate:
 	go run github.com/pressly/goose/v3/cmd/goose@v3.27.3 -dir migrations up
+
+miniapp-test:
+	npm --prefix miniapp test
+	npm --prefix miniapp run typecheck
+
+skill-test:
+	npm --prefix skills/mock-memoir test
+
+smoke:
+	powershell -ExecutionPolicy Bypass -File scripts/vertical-slice.ps1

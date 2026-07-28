@@ -1,3 +1,8 @@
+$standardGo = Join-Path $env:ProgramFiles 'Go\bin'
+if (-not (Get-Command go -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $standardGo 'go.exe'))) {
+    $env:Path = $standardGo + [IO.Path]::PathSeparator + $env:Path
+}
+
 $required = @('go', 'node', 'npm', 'docker')
 $missing = @()
 foreach ($command in $required) {
