@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestHandlerCreatesProject(t *testing.T) {
@@ -34,6 +36,26 @@ func TestHandlerCreatesProject(t *testing.T) {
 	}
 	if detail.DisplayName != "林奶奶" || len(detail.CollectionPlan) != 7 {
 		t.Fatalf("detail = %#v", detail)
+	}
+}
+
+func TestHandlerRegistersStaffProjectPath(t *testing.T) {
+	service := NewService(newMemoryRepository(), DeterministicPlanner{})
+	router := chi.NewRouter()
+	NewHandler(service).Register(router)
+	req := httptest.NewRequest(http.MethodPost, "/projects", bytes.NewReader([]byte(`{
+		"display_name":"林奶奶",
+		"birth_year":1948,
+		"birth_place":"苏州",
+		"long_term_residence":"苏州",
+		"target_edition":"brief"
+	}`)))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
 

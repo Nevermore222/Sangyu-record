@@ -7,7 +7,7 @@ import (
 )
 
 type Dependencies struct {
-	Projects http.Handler
+	RegisterStaffRoutes func(chi.Router)
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -15,8 +15,8 @@ func NewRouter(deps Dependencies) http.Handler {
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
-	if deps.Projects != nil {
-		router.Mount("/v1/staff/projects", deps.Projects)
+	if deps.RegisterStaffRoutes != nil {
+		router.Route("/v1/staff", deps.RegisterStaffRoutes)
 	}
 	return router
 }

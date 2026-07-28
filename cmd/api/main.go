@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/nevermore222/sangyu-record/internal/assets"
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/httpapi"
 	"github.com/nevermore222/sangyu-record/internal/platform"
@@ -34,11 +36,23 @@ func main() {
 	projectRepo := projects.NewPostgresRepository(pool)
 	projectService := projects.NewService(projectRepo, projects.DeterministicPlanner{})
 	projectHandler := projects.NewHandler(projectService)
+	objectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	assetRepo := assets.NewPostgresRepository(pool)
+	assetService := assets.NewService(assetRepo, assets.NewMinioObjectStore(objectClient), cfg.S3Bucket)
+	assetHandler := assets.NewHandler(assetService)
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
-			Projects: projectHandler.Routes(),
+			RegisterStaffRoutes: func(router chi.Router) {
+				projectHandler.Register(router)
+				assetHandler.Register(router)
+			},
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,

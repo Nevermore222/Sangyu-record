@@ -31,6 +31,11 @@ func (h *Handler) Routes() http.Handler {
 	return router
 }
 
+func (h *Handler) Register(router chi.Router) {
+	router.Post("/projects", h.create)
+	router.Get("/projects/{projectID}", h.get)
+}
+
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	var input CreateInput
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
