@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestPostgresConnection(t *testing.T) {
@@ -23,9 +24,27 @@ func TestPostgresConnection(t *testing.T) {
 	}
 }
 
+func TestObjectStoreWithRegionCanPresignWithoutEndpointAccess(t *testing.T) {
+	client, err := NewObjectStore(ObjectStoreConfig{
+		Endpoint: "unreachable.invalid:9000", AccessKey: "key", SecretKey: "secret", Region: "us-east-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.PresignedPutObject(context.Background(), "private", "test.bin", time.Minute); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNewAsynqClientRejectsInvalidURL(t *testing.T) {
 	if _, err := NewAsynqClient("not-a-redis-url"); err == nil {
 		t.Fatal("NewAsynqClient() error = nil, want invalid URL error")
+	}
+}
+
+func TestNewAsynqServerRejectsInvalidURL(t *testing.T) {
+	if _, err := NewAsynqServer("not-a-redis-url", 1); err == nil {
+		t.Fatal("NewAsynqServer() error = nil, want invalid URL error")
 	}
 }
 

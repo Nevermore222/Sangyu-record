@@ -55,3 +55,26 @@ func TestMinioObjectStorePresignAndStat(t *testing.T) {
 		t.Fatalf("info = %#v", info)
 	}
 }
+
+func TestMinioObjectStoreUsesPublicClientForSigning(t *testing.T) {
+	internalClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: "minio:9000", AccessKey: "sangyu", SecretKey: "sangyu-local-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: "localhost:9000", AccessKey: "sangyu", SecretKey: "sangyu-local-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := NewMinioObjectStore(internalClient, publicClient)
+	uploadURL, err := store.PresignPut(context.Background(), "sangyu-private", "test/photo.jpg", "image/jpeg", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uploadURL.Host != "localhost:9000" {
+		t.Fatalf("signed host = %q, want localhost:9000", uploadURL.Host)
+	}
+}

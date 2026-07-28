@@ -6,13 +6,15 @@ import (
 )
 
 type Config struct {
-	HTTPAddress string
-	DatabaseURL string
-	RedisURL    string
-	S3Endpoint  string
-	S3AccessKey string
-	S3SecretKey string
-	S3Bucket    string
+	HTTPAddress      string
+	DatabaseURL      string
+	RedisURL         string
+	S3Endpoint       string
+	S3PublicEndpoint string
+	S3AccessKey      string
+	S3SecretKey      string
+	S3Bucket         string
+	S3Region         string
 }
 
 func Load() (Config, error) {
@@ -24,7 +26,9 @@ func Load() (Config, error) {
 		S3AccessKey: os.Getenv("S3_ACCESS_KEY"),
 		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
 		S3Bucket:    envOr("S3_BUCKET", "sangyu-private"),
+		S3Region:    envOr("S3_REGION", "us-east-1"),
 	}
+	cfg.S3PublicEndpoint = envOr("S3_PUBLIC_ENDPOINT", cfg.S3Endpoint)
 	if cfg.DatabaseURL == "" || cfg.RedisURL == "" || cfg.S3Endpoint == "" {
 		return Config{}, errors.New("DATABASE_URL, REDIS_URL, and S3_ENDPOINT are required")
 	}

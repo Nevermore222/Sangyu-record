@@ -9,15 +9,20 @@ import (
 )
 
 type MinioObjectStore struct {
-	client *minio.Client
+	client        *minio.Client
+	presignClient *minio.Client
 }
 
-func NewMinioObjectStore(client *minio.Client) *MinioObjectStore {
-	return &MinioObjectStore{client: client}
+func NewMinioObjectStore(client *minio.Client, presignClients ...*minio.Client) *MinioObjectStore {
+	presignClient := client
+	if len(presignClients) > 0 {
+		presignClient = presignClients[0]
+	}
+	return &MinioObjectStore{client: client, presignClient: presignClient}
 }
 
 func (s *MinioObjectStore) PresignPut(ctx context.Context, bucket, key, _ string, expiry time.Duration) (*url.URL, error) {
-	return s.client.PresignedPutObject(ctx, bucket, key, expiry)
+	return s.presignClient.PresignedPutObject(ctx, bucket, key, expiry)
 }
 
 func (s *MinioObjectStore) Stat(ctx context.Context, bucket, key string) (ObjectInfo, error) {

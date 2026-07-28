@@ -15,6 +15,7 @@ import (
 	"github.com/nevermore222/sangyu-record/internal/httpapi"
 	"github.com/nevermore222/sangyu-record/internal/platform"
 	"github.com/nevermore222/sangyu-record/internal/projects"
+	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
 func main() {
@@ -37,14 +38,28 @@ func main() {
 	projectService := projects.NewService(projectRepo, projects.DeterministicPlanner{})
 	projectHandler := projects.NewHandler(projectService)
 	objectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
-		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicObjectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	assetRepo := assets.NewPostgresRepository(pool)
-	assetService := assets.NewService(assetRepo, assets.NewMinioObjectStore(objectClient), cfg.S3Bucket)
+	assetService := assets.NewService(assetRepo, assets.NewMinioObjectStore(objectClient, publicObjectClient), cfg.S3Bucket)
 	assetHandler := assets.NewHandler(assetService)
+	asynqClient, err := platform.NewAsynqClient(cfg.RedisURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = asynqClient.Close() }()
+	workflowRepo := workflow.NewPostgresRepository(pool)
+	workflowService := workflow.NewService(workflowRepo, workflow.NewAsynqEnqueuer(asynqClient))
+	workflowHandler := workflow.NewHandler(workflowService)
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,
@@ -52,6 +67,7 @@ func main() {
 			RegisterStaffRoutes: func(router chi.Router) {
 				projectHandler.Register(router)
 				assetHandler.Register(router)
+				workflowHandler.Register(router)
 			},
 		}),
 		ReadHeaderTimeout: 5 * time.Second,

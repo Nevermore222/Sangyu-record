@@ -59,6 +59,43 @@ services:
         mc mb --ignore-existing local/sangyu-private &&
         mc anonymous set none local/sangyu-private
 
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/local/Dockerfile.api
+    environment: &app-environment
+      HTTP_ADDRESS: :8080
+      DATABASE_URL: postgres://sangyu:sangyu@postgres:5432/sangyu?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: minio:9000
+      S3_PUBLIC_ENDPOINT: localhost:9000
+      S3_ACCESS_KEY: sangyu
+      S3_SECRET_KEY: sangyu-local-secret
+      S3_BUCKET: sangyu-private
+      S3_REGION: us-east-1
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/local/Dockerfile.worker
+    environment: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
 volumes:
   postgres-data:
   redis-data:
