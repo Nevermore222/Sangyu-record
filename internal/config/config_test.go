@@ -36,4 +36,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.S3Region != "us-east-1" {
 		t.Fatalf("S3Region = %q", cfg.S3Region)
 	}
+	if cfg.ChromiumURL != "http://localhost:9222" {
+		t.Fatalf("ChromiumURL = %q", cfg.ChromiumURL)
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/nevermore222/sangyu-record/internal/book"
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/platform"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
@@ -37,7 +38,18 @@ func main() {
 	}
 	repo := workflow.NewPostgresRepository(pool)
 	queue := workflow.NewAsynqEnqueuer(client)
-	worker := workflow.NewWorker(repo, workflow.DeterministicProcessors(), queue)
+	objectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	bookRepo := book.NewPostgresRepository(pool)
+	artifactStore := book.NewMinioArtifactStore(objectClient, objectClient)
+	renderer := book.NewService(book.NewChromiumEngine(cfg.ChromiumURL), artifactStore, bookRepo, cfg.S3Bucket)
+	processors := workflow.DeterministicProcessors()
+	processors[workflow.NodeRenderPDF] = book.NewWorkflowProcessor(bookRepo, renderer)
+	worker := workflow.NewWorker(repo, processors, queue)
 	mux := asynq.NewServeMux()
 	mux.Handle(workflow.TaskWorkflowNode, workflow.NewAsynqHandler(worker))
 	log.Print("workflow worker started")

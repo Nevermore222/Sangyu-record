@@ -15,6 +15,7 @@ type Config struct {
 	S3SecretKey      string
 	S3Bucket         string
 	S3Region         string
+	ChromiumURL      string
 }
 
 func Load() (Config, error) {
@@ -27,6 +28,7 @@ func Load() (Config, error) {
 		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
 		S3Bucket:    envOr("S3_BUCKET", "sangyu-private"),
 		S3Region:    envOr("S3_REGION", "us-east-1"),
+		ChromiumURL: envOr("CHROMIUM_URL", "http://localhost:9222"),
 	}
 	cfg.S3PublicEndpoint = envOr("S3_PUBLIC_ENDPOINT", cfg.S3Endpoint)
 	if cfg.DatabaseURL == "" || cfg.RedisURL == "" || cfg.S3Endpoint == "" {

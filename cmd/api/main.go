@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nevermore222/sangyu-record/internal/assets"
+	"github.com/nevermore222/sangyu-record/internal/book"
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/httpapi"
 	"github.com/nevermore222/sangyu-record/internal/platform"
@@ -60,6 +61,9 @@ func main() {
 	workflowRepo := workflow.NewPostgresRepository(pool)
 	workflowService := workflow.NewService(workflowRepo, workflow.NewAsynqEnqueuer(asynqClient))
 	workflowHandler := workflow.NewHandler(workflowService)
+	bookRepo := book.NewPostgresRepository(pool)
+	artifactStore := book.NewMinioArtifactStore(objectClient, publicObjectClient)
+	bookHandler := book.NewHandler(book.NewCatalog(bookRepo, artifactStore, cfg.S3Bucket))
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,
@@ -68,6 +72,7 @@ func main() {
 				projectHandler.Register(router)
 				assetHandler.Register(router)
 				workflowHandler.Register(router)
+				bookHandler.Register(router)
 			},
 		}),
 		ReadHeaderTimeout: 5 * time.Second,

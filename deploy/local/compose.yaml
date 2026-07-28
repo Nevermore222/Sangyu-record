@@ -73,6 +73,7 @@ services:
       S3_SECRET_KEY: sangyu-local-secret
       S3_BUCKET: sangyu-private
       S3_REGION: us-east-1
+      CHROMIUM_URL: http://chromium:9222
     ports:
       - "8080:8080"
     depends_on:
@@ -95,6 +96,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      chromium:
+        condition: service_started
 
   mock-skill-runner:
     build:
@@ -108,6 +111,12 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: 256m
+
+  chromium:
+    image: chromedp/headless-shell:latest
+    ports:
+      - "9222:9222"
+    shm_size: 512m
 
 volumes:
   postgres-data:
