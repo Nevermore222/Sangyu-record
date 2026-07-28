@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="page-head"><text class="page-title">现场采集</text><text class="page-meta">本轮至少采集一段录音和一张照片</text></view>
+  <text class="section-title">访谈录音</text>
+  <view class="capture" bindtap="toggleRecord"><view class="record-dot {{recording ? 'active' : ''}}"></view><view><text class="row-title">{{recording ? '结束录音' : (audioPath ? '重新录音' : '开始录音')}}</text><text class="row-subtitle">{{audioPath ? '录音文件已保存' : '单声道 · 16 kHz'}}</text></view></view>
+  <text class="section-title">老照片</text>
+  <view class="capture" bindtap="choosePhoto"><view class="photo-mark">＋</view><view><text class="row-title">{{photoPath ? '重新选择照片' : '拍摄或选择照片'}}</text><text class="row-subtitle">{{photoPath ? '照片文件已保存' : '支持 JPG 与 PNG'}}</text></view></view>
+  <view class="progress">{{progressText}}</view>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+</view>
+<view class="action-bar"><button class="primary" loading="{{uploading}}" disabled="{{uploading}}" bindtap="upload">上传本轮物料</button></view>

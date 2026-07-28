@@ -1,0 +1,6 @@
+.capture { display: flex; align-items: center; min-height: 132rpx; padding: 20rpx 0; border-top: 1rpx solid var(--line); border-bottom: 1rpx solid var(--line); }
+.record-dot, .photo-mark { display: flex; align-items: center; justify-content: center; width: 72rpx; height: 72rpx; margin-right: 24rpx; border: 2rpx solid var(--ink); border-radius: 50%; box-sizing: border-box; }
+.record-dot::after { content: ""; width: 24rpx; height: 24rpx; border-radius: 50%; background: var(--accent); }
+.record-dot.active::after { border-radius: 2rpx; }
+.photo-mark { border-radius: 4rpx; font-size: 40rpx; }
+.progress { margin-top: 44rpx; color: var(--green); text-align: center; }

@@ -1,0 +1,142 @@
+page {
+  --ink: #20231f;
+  --muted: #72766f;
+  --paper: #f7f5f0;
+  --line: #d9d6ce;
+  --accent: #a23b2a;
+  --green: #39705a;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  font-size: 30rpx;
+  letter-spacing: 0;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32rpx 32rpx 180rpx;
+  box-sizing: border-box;
+}
+
+.page-head {
+  margin: 8rpx 0 40rpx;
+}
+
+.page-title {
+  display: block;
+  font-family: "Noto Serif CJK SC", "STSong", serif;
+  font-size: 48rpx;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.page-meta {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--muted);
+  font-size: 25rpx;
+}
+
+.section-title {
+  display: block;
+  margin: 38rpx 0 16rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 104rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--line);
+  box-sizing: border-box;
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-title {
+  display: block;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.row-subtitle {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.status {
+  flex: 0 0 auto;
+  margin-left: 20rpx;
+  color: var(--accent);
+  font-size: 24rpx;
+}
+
+.empty, .error, .loading {
+  padding: 96rpx 20rpx;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.error { color: var(--accent); }
+
+.action-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid var(--line);
+  background: rgba(247, 245, 240, 0.96);
+  box-sizing: border-box;
+}
+
+button {
+  height: 88rpx;
+  border-radius: 6rpx;
+  font-size: 28rpx;
+  line-height: 88rpx;
+}
+
+button::after { border: 0; }
+
+.primary {
+  flex: 1;
+  background: var(--ink);
+  color: #fff;
+}
+
+.secondary {
+  flex: 1;
+  border: 1rpx solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+}
+
+.field {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 12rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+}
+
+input, picker {
+  min-height: 64rpx;
+  font-size: 30rpx;
+}

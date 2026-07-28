@@ -1,0 +1,1 @@
+.row:active { opacity: 0.62; }

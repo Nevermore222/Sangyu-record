@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="page-head">
+    <text class="page-title">桑榆录</text>
+    <text class="page-meta">工作人员采集与成书工作台</text>
+  </view>
+  <view wx:if="{{loading}}" class="loading">正在载入项目</view>
+  <view wx:elif="{{error}}" class="error" bindtap="loadProjects">{{error}}\n轻触重试</view>
+  <view wx:elif="{{projects.length === 0}}" class="empty">暂无项目</view>
+  <view wx:else>
+    <view class="row" wx:for="{{projects}}" wx:key="id" data-id="{{item.id}}" bindtap="openProject">
+      <view class="row-main">
+        <text class="row-title">{{item.display_name}}</text>
+        <text class="row-subtitle">生于 {{item.birth_year}} 年 · {{item.collection_plan.length}} 项采集任务</text>
+      </view>
+      <text class="status">{{item.state}}</text>
+    </view>
+  </view>
+</view>
+<view class="action-bar"><button class="primary" bindtap="createProject">新建老人档案</button></view>

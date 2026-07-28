@@ -1,0 +1,9 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading">正在读取成果</view>
+  <view wx:elif="{{error}}" class="error" bindtap="load">{{error}}\n轻触重试</view>
+  <view wx:elif="{{artifact}}">
+    <view class="page-head"><text class="page-title">回忆录已完成</text><text class="page-meta">第 {{artifact.version}} 版 · {{artifact.size_bytes}} 字节</text></view>
+    <view class="book-mark"><text>桑榆录</text><view></view><text class="book-sub">数字家庭档案</text></view>
+  </view>
+</view>
+<view class="action-bar"><button class="primary" loading="{{opening}}" disabled="{{opening || !artifact}}" bindtap="openPDF">打开 PDF</button></view>

@@ -1,0 +1,3 @@
+.book-mark { width: 420rpx; aspect-ratio: 0.72; margin: 60rpx auto; padding: 64rpx 46rpx; border: 1rpx solid var(--ink); background: #ede8dd; font-family: "Noto Serif CJK SC", "STSong", serif; font-size: 52rpx; box-sizing: border-box; }
+.book-mark view { width: 72rpx; height: 2rpx; margin: 30rpx 0; background: var(--accent); }
+.book-sub { font-size: 24rpx; color: var(--muted); }

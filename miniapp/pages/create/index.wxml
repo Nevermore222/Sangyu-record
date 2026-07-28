@@ -1,0 +1,11 @@
+<view class="page">
+  <view class="page-head"><text class="page-title">建立人生档案</text><text class="page-meta">填写最少信息，系统将生成首轮采集计划</text></view>
+  <view class="field"><text class="field-label">姓名或项目代号</text><input data-field="display_name" bindinput="onInput" placeholder="例如：林奶奶" /></view>
+  <view class="field"><text class="field-label">出生年份</text><input data-field="birth_year" bindinput="onInput" type="number" placeholder="例如：1948" /></view>
+  <view class="field"><text class="field-label">出生地</text><input data-field="birth_place" bindinput="onInput" placeholder="省、市或县" /></view>
+  <view class="field"><text class="field-label">长期生活地区</text><input data-field="long_term_residence" bindinput="onInput" placeholder="主要生活地区" /></view>
+  <view class="field"><text class="field-label">主要职业</text><input data-field="primary_occupation" bindinput="onInput" placeholder="可留空" /></view>
+  <view class="field"><text class="field-label">目标体量</text><picker range="{{editions}}" value="{{editionIndex}}" bindchange="onEdition">{{editions[editionIndex]}}</picker></view>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+</view>
+<view class="action-bar"><button class="primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">生成采集计划</button></view>

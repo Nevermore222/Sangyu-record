@@ -1,0 +1,24 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading">正在载入档案</view>
+  <view wx:elif="{{error}}" class="error" bindtap="refresh">{{error}}\n轻触重试</view>
+  <block wx:elif="{{project}}">
+    <view class="page-head"><text class="page-title">{{project.display_name}}</text><text class="page-meta">{{project.birth_year}} 年生 · {{project.state}}</text></view>
+    <text class="section-title">采集计划</text>
+    <view class="row" wx:for="{{project.collection_plan}}" wx:key="id">
+      <view class="plan-index">{{index + 1}}</view>
+      <view class="row-main"><text class="row-title">{{item.category}}</text><text class="row-subtitle">{{item.prompt}}</text></view>
+      <text class="status">{{item.status}}</text>
+    </view>
+    <block wx:if="{{workflow}}">
+      <text class="section-title">自动处理</text>
+      <view class="stage" wx:for="{{workflow.nodes}}" wx:key="name">
+        <view class="stage-mark {{item.state}}"></view><text class="stage-name">{{item.name}}</text><text class="stage-state">{{item.state}}</text>
+      </view>
+    </block>
+  </block>
+</view>
+<view class="action-bar">
+  <button class="secondary" bindtap="collect">采集物料</button>
+  <button wx:if="{{workflow && workflow.state === 'succeeded'}}" class="primary" bindtap="openResult">查看回忆录</button>
+  <button wx:else class="primary" loading="{{processing}}" disabled="{{processing}}" bindtap="startWorkflow">开始自动成书</button>
+</view>

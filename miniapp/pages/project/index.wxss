@@ -1,0 +1,8 @@
+.plan-index { width: 52rpx; color: var(--accent); font-family: serif; }
+.stage { position: relative; display: flex; align-items: center; min-height: 76rpx; padding-left: 38rpx; }
+.stage::before { content: ""; position: absolute; left: 9rpx; top: 0; bottom: 0; width: 1rpx; background: var(--line); }
+.stage-mark { position: absolute; left: 0; width: 20rpx; height: 20rpx; border: 2rpx solid var(--muted); border-radius: 50%; background: var(--paper); box-sizing: border-box; }
+.stage-mark.succeeded { border-color: var(--green); background: var(--green); }
+.stage-mark.failed { border-color: var(--accent); background: var(--accent); }
+.stage-name { flex: 1; font-size: 27rpx; }
+.stage-state { color: var(--muted); font-size: 23rpx; }
