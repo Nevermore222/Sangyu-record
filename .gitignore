@@ -1,6 +1,7 @@
 .env
 .idea/
 .vscode/
+.superpowers/
 bin/
 coverage/
 node_modules/
