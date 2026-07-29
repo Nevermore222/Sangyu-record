@@ -19,6 +19,7 @@ import (
 	"github.com/nevermore222/sangyu-record/internal/projects"
 	"github.com/nevermore222/sangyu-record/internal/providerjobs"
 	"github.com/nevermore222/sangyu-record/internal/providers"
+	"github.com/nevermore222/sangyu-record/internal/staff"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
@@ -37,6 +38,28 @@ func main() {
 	if err := pool.Ping(startupCtx); err != nil {
 		log.Fatal(err)
 	}
+	staffRepo := staff.NewPostgresRepository(pool)
+	var codeExchanger staff.CodeExchanger
+	if cfg.AuthMode == "wechat" {
+		codeExchanger = staff.NewHTTPExchanger(
+			staff.WeChatCode2SessionURL,
+			cfg.WeChatAppID,
+			cfg.WeChatAppSecret,
+			&http.Client{Timeout: 10 * time.Second},
+		)
+	}
+	allowedOpenIDs := make(map[string]struct{}, len(cfg.StaffOpenIDAllowlist))
+	for _, openID := range cfg.StaffOpenIDAllowlist {
+		allowedOpenIDs[openID] = struct{}{}
+	}
+	staffService := staff.NewService(staffRepo, codeExchanger, staff.Config{
+		Mode:           cfg.AuthMode,
+		AllowedOpenIDs: allowedOpenIDs,
+		SessionTTL:     cfg.SessionTTL,
+		SessionSecret:  []byte(cfg.SessionSecret),
+	}, time.Now)
+	staffHandler := staff.NewHandler(staffService)
+	staffMiddleware := staff.NewMiddleware(staffService)
 
 	projectRepo := projects.NewPostgresRepository(pool)
 	projectService := projects.NewService(projectRepo, projects.DeterministicPlanner{})
@@ -87,8 +110,11 @@ func main() {
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
+			RegisterAuthRoutes:     staffHandler.RegisterAuth,
 			RegisterProviderRoutes: callbackHandler.Register,
+			StaffMiddleware:        staffMiddleware.Handle,
 			RegisterStaffRoutes: func(router chi.Router) {
+				staffHandler.RegisterStaff(router)
 				projectHandler.Register(router)
 				assetHandler.Register(router)
 				workflowHandler.Register(router)

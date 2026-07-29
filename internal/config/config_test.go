@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func setRequiredBaseEnvironment(t *testing.T) {
 	t.Helper()
@@ -17,6 +20,34 @@ func setRequiredBaseEnvironment(t *testing.T) {
 	t.Setenv("PROVIDER_CALLBACK_BASE_URL", "http://api:8080")
 	t.Setenv("PROVIDER_CALLBACK_SECRET", "local-callback-secret")
 	t.Setenv("PROVIDER_POLL_INTERVAL", "2s")
+	t.Setenv("AUTH_MODE", "dev")
+	t.Setenv("SESSION_SECRET", "local-session-secret")
+	t.Setenv("SESSION_TTL", "12h")
+}
+
+func TestLoadRequiresWechatCredentialsInWechatMode(t *testing.T) {
+	setRequiredBaseEnvironment(t)
+	t.Setenv("AUTH_MODE", "wechat")
+	t.Setenv("WECHAT_APP_ID", "")
+	t.Setenv("WECHAT_APP_SECRET", "")
+	t.Setenv("STAFF_OPENID_ALLOWLIST", "collector-openid")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() error = nil, want WeChat credential error")
+	}
+}
+
+func TestLoadParsesStaffAuthentication(t *testing.T) {
+	setRequiredBaseEnvironment(t)
+	t.Setenv("STAFF_OPENID_ALLOWLIST", " collector-1,collector-2 ")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AuthMode != "dev" || cfg.SessionTTL != 12*time.Hour || len(cfg.StaffOpenIDAllowlist) != 2 {
+		t.Fatalf("auth config = %#v", cfg)
+	}
 }
 
 func TestLoadRequiresServiceEndpoints(t *testing.T) {

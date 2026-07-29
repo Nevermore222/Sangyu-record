@@ -84,6 +84,9 @@ services:
       PROVIDER_CALLBACK_BASE_URL: http://api:8080
       PROVIDER_CALLBACK_SECRET: sangyu-local-callback-secret
       PROVIDER_POLL_INTERVAL: 2s
+      AUTH_MODE: dev
+      SESSION_SECRET: sangyu-local-session-secret
+      SESSION_TTL: 12h
     ports:
       - "8080:8080"
     depends_on:

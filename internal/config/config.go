@@ -29,6 +29,12 @@ type Config struct {
 	ProviderCallbackBaseURL string
 	ProviderCallbackSecret  string
 	ProviderPollInterval    time.Duration
+	AuthMode                string
+	WeChatAppID             string
+	WeChatAppSecret         string
+	StaffOpenIDAllowlist    []string
+	SessionSecret           string
+	SessionTTL              time.Duration
 }
 
 func Load() (Config, error) {
@@ -50,6 +56,10 @@ func Load() (Config, error) {
 		AgentProviderToken:      os.Getenv("AGENT_PROVIDER_TOKEN"),
 		ProviderCallbackBaseURL: os.Getenv("PROVIDER_CALLBACK_BASE_URL"),
 		ProviderCallbackSecret:  os.Getenv("PROVIDER_CALLBACK_SECRET"),
+		AuthMode:                envOr("AUTH_MODE", "dev"),
+		WeChatAppID:             os.Getenv("WECHAT_APP_ID"),
+		WeChatAppSecret:         os.Getenv("WECHAT_APP_SECRET"),
+		SessionSecret:           os.Getenv("SESSION_SECRET"),
 	}
 	cfg.S3PublicEndpoint = envOr("S3_PUBLIC_ENDPOINT", cfg.S3Endpoint)
 	if cfg.DatabaseURL == "" || cfg.RedisURL == "" || cfg.S3Endpoint == "" {
@@ -74,6 +84,25 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("PROVIDER_POLL_INTERVAL must be a positive duration")
 	}
 	cfg.ProviderPollInterval = pollInterval
+	if cfg.AuthMode != "dev" && cfg.AuthMode != "wechat" {
+		return Config{}, errors.New("AUTH_MODE must be dev or wechat")
+	}
+	if cfg.SessionSecret == "" {
+		return Config{}, errors.New("SESSION_SECRET is required")
+	}
+	sessionTTL, err := time.ParseDuration(os.Getenv("SESSION_TTL"))
+	if err != nil || sessionTTL <= 0 {
+		return Config{}, errors.New("SESSION_TTL must be a positive duration")
+	}
+	cfg.SessionTTL = sessionTTL
+	for _, openID := range strings.Split(os.Getenv("STAFF_OPENID_ALLOWLIST"), ",") {
+		if openID = strings.TrimSpace(openID); openID != "" {
+			cfg.StaffOpenIDAllowlist = append(cfg.StaffOpenIDAllowlist, openID)
+		}
+	}
+	if cfg.AuthMode == "wechat" && (cfg.WeChatAppID == "" || cfg.WeChatAppSecret == "" || len(cfg.StaffOpenIDAllowlist) == 0) {
+		return Config{}, errors.New("WECHAT_APP_ID, WECHAT_APP_SECRET, and STAFF_OPENID_ALLOWLIST are required in wechat mode")
+	}
 	return cfg, nil
 }
 

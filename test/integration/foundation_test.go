@@ -20,6 +20,7 @@ import (
 type testAPI struct {
 	baseURL string
 	client  *http.Client
+	token   string
 }
 
 type projectResponse struct {
@@ -147,10 +148,21 @@ func assertProviderAudit(t *testing.T, runID string) {
 
 func newTestAPI(t *testing.T, baseURL string) *testAPI {
 	t.Helper()
-	return &testAPI{
+	api := &testAPI{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		client:  &http.Client{Timeout: 15 * time.Second},
 	}
+	var login struct {
+		Token string `json:"token"`
+	}
+	api.json(t, http.MethodPost, "/v1/auth/dev", map[string]string{
+		"display_name": "Integration Collector",
+	}, &login)
+	if login.Token == "" {
+		t.Fatal("development login returned an empty token")
+	}
+	api.token = login.Token
+	return api
 }
 
 func (api *testAPI) createProject(t *testing.T) projectResponse {
@@ -253,6 +265,9 @@ func (api *testAPI) json(t *testing.T, method, path string, input, output any) {
 
 func (api *testAPI) do(t *testing.T, req *http.Request, output any) []byte {
 	t.Helper()
+	if api.token != "" && strings.HasPrefix(req.URL.Path, "/v1/staff/") {
+		req.Header.Set("Authorization", "Bearer "+api.token)
+	}
 	response, err := api.client.Do(req)
 	if err != nil {
 		t.Fatal(err)
