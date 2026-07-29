@@ -21,6 +21,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	providerObjectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
+		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	pool, err := platform.OpenPostgres(ctx, cfg.DatabaseURL)
@@ -59,7 +65,7 @@ func main() {
 		time.Now,
 	)
 	assetRepo := assets.NewPostgresRepository(pool)
-	sourceReader := assets.NewSourceReader(assetRepo, assets.NewMinioObjectStore(objectClient), cfg.S3Bucket)
+	sourceReader := assets.NewSourceReader(assetRepo, assets.NewMinioObjectStore(objectClient, providerObjectClient), cfg.S3Bucket)
 	bookRepo := book.NewPostgresRepository(pool)
 	artifactStore := book.NewMinioArtifactStore(objectClient, objectClient)
 	renderer := book.NewService(book.NewChromiumEngine(cfg.ChromiumURL), artifactStore, bookRepo, cfg.S3Bucket)
