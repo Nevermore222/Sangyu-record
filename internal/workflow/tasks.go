@@ -71,15 +71,15 @@ func (h *AsynqHandler) ProcessTask(ctx context.Context, task *asynq.Task) error 
 	return h.worker.Process(ctx, payload)
 }
 
-type ProviderPollHandler struct {
+type ProviderPollAsynqHandler struct {
 	worker *Worker
 }
 
-func NewProviderPollHandler(worker *Worker) *ProviderPollHandler {
-	return &ProviderPollHandler{worker: worker}
+func NewProviderPollAsynqHandler(worker *Worker) *ProviderPollAsynqHandler {
+	return &ProviderPollAsynqHandler{worker: worker}
 }
 
-func (h *ProviderPollHandler) ProcessTask(ctx context.Context, task *asynq.Task) error {
+func (h *ProviderPollAsynqHandler) ProcessTask(ctx context.Context, task *asynq.Task) error {
 	var payload ProviderPollPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return fmt.Errorf("decode provider poll payload: %w", err)

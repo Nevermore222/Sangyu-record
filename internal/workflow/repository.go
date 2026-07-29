@@ -156,7 +156,8 @@ func (r *PostgresRepository) LatestRun(ctx context.Context, projectID uuid.UUID)
 		FROM workflow_nodes WHERE run_id = $1
 		ORDER BY CASE node_name
 			WHEN 'transcribe' THEN 1 WHEN 'understand_photo' THEN 2 WHEN 'build_memory' THEN 3
-			WHEN 'plan_book' THEN 4 WHEN 'write_book' THEN 5 WHEN 'render_pdf' THEN 6 END`, run.ID)
+			WHEN 'retrieve_shared_memory' THEN 4 WHEN 'plan_book' THEN 5
+			WHEN 'write_book' THEN 6 WHEN 'render_pdf' THEN 7 END`, run.ID)
 	if err != nil {
 		return Run{}, err
 	}

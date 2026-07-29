@@ -3,45 +3,46 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/google/uuid"
+	"github.com/nevermore222/sangyu-record/internal/assets"
+	"github.com/nevermore222/sangyu-record/internal/providers"
 )
 
-type DeterministicProcessor struct {
-	Node NodeName
+type AssetURLReader interface {
+	URLs(context.Context, uuid.UUID, assets.Kind) ([]string, error)
 }
 
-func (p DeterministicProcessor) Process(_ context.Context, _ NodePayload) (ProcessResult, error) {
-	var output any
-	switch p.Node {
-	case NodeTranscribe:
-		output = map[string]any{
-			"segments": []map[string]any{{"start_seconds": 12, "end_seconds": 20, "text": "1978年，我进入了当地纺织厂。", "source": "audio-fixture#12-20"}},
-		}
-	case NodeUnderstandPhoto:
-		output = map[string]any{"description": "候选描述：一张工作时期的集体照片", "source": "photo-fixture", "confidence": "inferred"}
-	case NodeBuildMemory:
-		output = map[string]any{"memories": []map[string]any{{"event": "进入当地纺织厂工作", "year": 1978, "evidence_refs": []string{"audio-fixture#12-20"}}}}
-	case NodePlanBook:
-		output = map[string]any{"title": "岁月留声", "chapters": []map[string]any{{"title": "纺织厂的日子", "target_words": 1200}}}
-	case NodeWriteBook:
-		output = map[string]any{
-			"title": "岁月留声",
-			"chapters": []map[string]any{{"title": "纺织厂的日子", "paragraphs": []map[string]any{{
-				"text": "1978年，她进入了当地纺织厂。", "evidence_refs": []string{"audio-fixture#12-20"},
-			}}}},
-		}
-	case NodeRenderPDF:
-		return ProcessResult{}, ErrRendererUnavailable
-	default:
-		return ProcessResult{}, ErrProcessorMissing
+type providerNodeSpec struct {
+	kind      providers.Kind
+	task      providers.TaskType
+	assetKind assets.Kind
+}
+
+func ProviderProcessors(submitter JobSubmitter, sourceReader AssetURLReader, callbackBaseURL string) map[NodeName]Processor {
+	specs := map[NodeName]providerNodeSpec{
+		NodeTranscribe:           {kind: providers.KindMedia, task: providers.TaskAudioTranscription, assetKind: assets.KindAudio},
+		NodeUnderstandPhoto:      {kind: providers.KindMedia, task: providers.TaskPhotoUnderstanding, assetKind: assets.KindPhoto},
+		NodeBuildMemory:          {kind: providers.KindAgent, task: providers.TaskTimelineBuilder},
+		NodeRetrieveSharedMemory: {kind: providers.KindKnowledge, task: providers.TaskSharedMemoryRetrieval},
+		NodePlanBook:             {kind: providers.KindAgent, task: providers.TaskChapterPlanner},
+		NodeWriteBook:            {kind: providers.KindAgent, task: providers.TaskChapterWriter},
 	}
-	encoded, err := json.Marshal(output)
-	return Completed(encoded), err
-}
-
-func DeterministicProcessors() map[NodeName]Processor {
-	processors := make(map[NodeName]Processor, len(NodeSequence))
-	for _, node := range NodeSequence {
-		processors[node] = DeterministicProcessor{Node: node}
+	processors := make(map[NodeName]Processor, len(specs))
+	for node, spec := range specs {
+		processors[node] = NewProviderProcessor(submitter, spec.kind, spec.task, func(ctx context.Context, payload NodePayload) (json.RawMessage, []string, error) {
+			input, err := json.Marshal(map[string]string{
+				"project_id": payload.ProjectID.String(), "workflow_run_id": payload.RunID.String(), "workflow_node": string(payload.Node),
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+			if spec.assetKind == "" {
+				return input, nil, nil
+			}
+			resources, err := sourceReader.URLs(ctx, payload.ProjectID, spec.assetKind)
+			return input, resources, err
+		}, callbackBaseURL)
 	}
 	return processors
 }

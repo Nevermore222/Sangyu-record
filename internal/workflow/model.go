@@ -18,18 +18,20 @@ var (
 type NodeName string
 
 const (
-	NodeTranscribe      NodeName = "transcribe"
-	NodeUnderstandPhoto NodeName = "understand_photo"
-	NodeBuildMemory     NodeName = "build_memory"
-	NodePlanBook        NodeName = "plan_book"
-	NodeWriteBook       NodeName = "write_book"
-	NodeRenderPDF       NodeName = "render_pdf"
+	NodeTranscribe           NodeName = "transcribe"
+	NodeUnderstandPhoto      NodeName = "understand_photo"
+	NodeBuildMemory          NodeName = "build_memory"
+	NodeRetrieveSharedMemory NodeName = "retrieve_shared_memory"
+	NodePlanBook             NodeName = "plan_book"
+	NodeWriteBook            NodeName = "write_book"
+	NodeRenderPDF            NodeName = "render_pdf"
 )
 
 var NodeSequence = []NodeName{
 	NodeTranscribe,
 	NodeUnderstandPhoto,
 	NodeBuildMemory,
+	NodeRetrieveSharedMemory,
 	NodePlanBook,
 	NodeWriteBook,
 	NodeRenderPDF,

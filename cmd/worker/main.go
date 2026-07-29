@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/nevermore222/sangyu-record/internal/assets"
 	"github.com/nevermore222/sangyu-record/internal/book"
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/platform"
+	"github.com/nevermore222/sangyu-record/internal/providerjobs"
+	"github.com/nevermore222/sangyu-record/internal/providers"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
@@ -44,16 +48,52 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	providerRegistry, err := newProviderRegistry(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	providerJobService := providerjobs.NewService(
+		providerjobs.NewPostgresRepository(pool),
+		providerjobs.NewMinioRawStore(objectClient, cfg.S3Bucket),
+		providerRegistry,
+		time.Now,
+	)
+	assetRepo := assets.NewPostgresRepository(pool)
+	sourceReader := assets.NewSourceReader(assetRepo, assets.NewMinioObjectStore(objectClient), cfg.S3Bucket)
 	bookRepo := book.NewPostgresRepository(pool)
 	artifactStore := book.NewMinioArtifactStore(objectClient, objectClient)
 	renderer := book.NewService(book.NewChromiumEngine(cfg.ChromiumURL), artifactStore, bookRepo, cfg.S3Bucket)
-	processors := workflow.DeterministicProcessors()
+	processors := workflow.ProviderProcessors(providerJobService, sourceReader, cfg.ProviderCallbackBaseURL)
 	processors[workflow.NodeRenderPDF] = book.NewWorkflowProcessor(bookRepo, renderer)
-	worker := workflow.NewWorker(repo, processors, queue, nil, 2*time.Second)
+	worker := workflow.NewWorker(repo, processors, queue, providerJobService, cfg.ProviderPollInterval)
 	mux := asynq.NewServeMux()
 	mux.Handle(workflow.TaskWorkflowNode, workflow.NewAsynqHandler(worker))
+	mux.Handle(workflow.TaskProviderPoll, workflow.NewProviderPollAsynqHandler(worker))
 	log.Print("workflow worker started")
 	if err := server.Run(mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func newProviderRegistry(cfg config.Config) (providers.Registry, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	media, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.MediaProviderURL, Token: cfg.MediaProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	knowledge, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.KnowledgeProviderURL, Token: cfg.KnowledgeProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	agent, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.AgentProviderURL, Token: cfg.AgentProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	return providers.Registry{Media: media, Knowledge: knowledge, Agent: agent}, nil
 }

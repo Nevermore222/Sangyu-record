@@ -56,4 +56,15 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 	if completed.State != StateUploaded || completed.SHA256 != hash || completed.ObjectKey != asset.ObjectKey {
 		t.Fatalf("completed = %#v", completed)
 	}
+	uploaded, err := repo.ListUploadedByKind(ctx, project.ID, KindAudio)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(uploaded) != 1 || uploaded[0].ID != asset.ID {
+		t.Fatalf("uploaded audio = %#v", uploaded)
+	}
+	photos, err := repo.ListUploadedByKind(ctx, project.ID, KindPhoto)
+	if err != nil || len(photos) != 0 {
+		t.Fatalf("uploaded photos = %#v, err = %v", photos, err)
+	}
 }

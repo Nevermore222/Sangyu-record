@@ -56,6 +56,15 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	if len(run.Nodes) != len(NodeSequence) {
 		t.Fatalf("nodes = %d, want %d", len(run.Nodes), len(NodeSequence))
 	}
+	loaded, err := repo.LatestRun(ctx, project.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, node := range loaded.Nodes {
+		if node.Name != NodeSequence[index] {
+			t.Fatalf("node %d = %s, want %s", index, node.Name, NodeSequence[index])
+		}
+	}
 	payload := NodePayload{RunID: run.ID, ProjectID: project.ID, Node: NodeTranscribe}
 	claimed, err := repo.ClaimNode(ctx, payload)
 	if err != nil || !claimed {

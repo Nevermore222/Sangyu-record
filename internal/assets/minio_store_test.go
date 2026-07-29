@@ -77,4 +77,11 @@ func TestMinioObjectStoreUsesPublicClientForSigning(t *testing.T) {
 	if uploadURL.Host != "localhost:9000" {
 		t.Fatalf("signed host = %q, want localhost:9000", uploadURL.Host)
 	}
+	downloadURL, err := store.PresignGet(context.Background(), "sangyu-private", "test/photo.jpg", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if downloadURL.Host != "localhost:9000" {
+		t.Fatalf("download signed host = %q, want localhost:9000", downloadURL.Host)
+	}
 }

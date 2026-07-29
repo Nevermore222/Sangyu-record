@@ -10,12 +10,15 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/nevermore222/sangyu-record/internal/assets"
 	"github.com/nevermore222/sangyu-record/internal/book"
 	"github.com/nevermore222/sangyu-record/internal/config"
 	"github.com/nevermore222/sangyu-record/internal/httpapi"
 	"github.com/nevermore222/sangyu-record/internal/platform"
 	"github.com/nevermore222/sangyu-record/internal/projects"
+	"github.com/nevermore222/sangyu-record/internal/providerjobs"
+	"github.com/nevermore222/sangyu-record/internal/providers"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
@@ -58,8 +61,24 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func() { _ = asynqClient.Close() }()
+	providerRegistry, err := newProviderRegistry(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	providerJobService := providerjobs.NewService(
+		providerjobs.NewPostgresRepository(pool),
+		providerjobs.NewMinioRawStore(objectClient, cfg.S3Bucket),
+		providerRegistry,
+		time.Now,
+	)
+	workflowQueue := workflow.NewAsynqEnqueuer(asynqClient)
+	callbackHandler := providerjobs.NewCallbackHandler(
+		providerJobService,
+		callbackPollEnqueuer{queue: workflowQueue},
+		providerjobs.NewCallbackVerifier([]byte(cfg.ProviderCallbackSecret), 5*time.Minute, nil),
+	)
 	workflowRepo := workflow.NewPostgresRepository(pool)
-	workflowService := workflow.NewService(workflowRepo, workflow.NewAsynqEnqueuer(asynqClient))
+	workflowService := workflow.NewService(workflowRepo, workflowQueue)
 	workflowHandler := workflow.NewHandler(workflowService)
 	bookRepo := book.NewPostgresRepository(pool)
 	artifactStore := book.NewMinioArtifactStore(objectClient, publicObjectClient)
@@ -68,6 +87,7 @@ func main() {
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,
 		Handler: httpapi.NewRouter(httpapi.Dependencies{
+			RegisterProviderRoutes: callbackHandler.Register,
 			RegisterStaffRoutes: func(router chi.Router) {
 				projectHandler.Register(router)
 				assetHandler.Register(router)
@@ -94,4 +114,35 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+type callbackPollEnqueuer struct {
+	queue *workflow.AsynqEnqueuer
+}
+
+func (q callbackPollEnqueuer) EnqueueProviderPoll(ctx context.Context, jobID uuid.UUID, delay time.Duration) error {
+	return q.queue.EnqueueProviderPoll(ctx, workflow.ProviderPollPayload{JobID: jobID}, delay)
+}
+
+func newProviderRegistry(cfg config.Config) (providers.Registry, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	media, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.MediaProviderURL, Token: cfg.MediaProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	knowledge, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.KnowledgeProviderURL, Token: cfg.KnowledgeProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	agent, err := providers.NewHTTPClient(providers.HTTPConfig{
+		BaseURL: cfg.AgentProviderURL, Token: cfg.AgentProviderToken, AllowedHosts: cfg.ProviderAllowedHosts,
+	}, client)
+	if err != nil {
+		return providers.Registry{}, err
+	}
+	return providers.Registry{Media: media, Knowledge: knowledge, Agent: agent}, nil
 }

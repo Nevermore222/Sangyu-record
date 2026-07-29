@@ -38,6 +38,28 @@ func (r *PostgresRepository) Get(ctx context.Context, id uuid.UUID) (Asset, erro
 		FROM assets WHERE id = $1`, id))
 }
 
+func (r *PostgresRepository) ListUploadedByKind(ctx context.Context, projectID uuid.UUID, kind Kind) ([]Asset, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id, project_id, kind, filename, content_type, size_bytes,
+		       object_key, sha256, state, created_at, uploaded_at
+		FROM assets
+		WHERE project_id = $1 AND kind = $2 AND state = 'uploaded'
+		ORDER BY created_at, id`, projectID, kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var assets []Asset
+	for rows.Next() {
+		asset, err := scanAsset(rows)
+		if err != nil {
+			return nil, err
+		}
+		assets = append(assets, asset)
+	}
+	return assets, rows.Err()
+}
+
 func (r *PostgresRepository) MarkUploaded(ctx context.Context, id uuid.UUID, sha256 string, uploadedAt time.Time) (Asset, error) {
 	asset, err := scanAsset(r.pool.QueryRow(ctx, `
 		UPDATE assets
