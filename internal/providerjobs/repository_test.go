@@ -66,6 +66,70 @@ func TestCreateOrGetUsesIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestRetryableSubmissionCanStoreExternalJobID(t *testing.T) {
+	pool := openProviderJobsTestPool(t)
+	projectID, runID := insertProviderJobParents(t, pool)
+	repo := NewPostgresRepository(pool)
+	job, _, err := repo.CreateOrGet(context.Background(), CreateInput{
+		RequestID: uuid.New(), ProjectID: projectID, WorkflowRunID: runID, WorkflowNode: "transcribe",
+		ProviderKind: providers.KindMedia, TaskType: providers.TaskAudioTranscription,
+		IdempotencyKey: runID.String() + ":transcribe", Input: json.RawMessage(`{}`), Deadline: time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ApplySnapshot(context.Background(), job.ID, providers.Snapshot{
+		State: providers.StateRetryableFailed, ErrorCode: "provider_busy",
+	}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.MarkSubmitted(context.Background(), job.ID, providers.JobRef{
+		ProviderJobID: "external-retry", State: providers.StateSubmitted,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.ProviderJobID != "external-retry" || updated.State != providers.StateSubmitted {
+		t.Fatalf("updated job = %#v", updated)
+	}
+}
+
+func TestCallbackCanArriveBeforeSubmitResponseIsPersisted(t *testing.T) {
+	pool := openProviderJobsTestPool(t)
+	projectID, runID := insertProviderJobParents(t, pool)
+	repo := NewPostgresRepository(pool)
+	job, _, err := repo.CreateOrGet(context.Background(), CreateInput{
+		RequestID: uuid.New(), ProjectID: projectID, WorkflowRunID: runID, WorkflowNode: "transcribe",
+		ProviderKind: providers.KindMedia, TaskType: providers.TaskAudioTranscription,
+		IdempotencyKey: runID.String() + ":transcribe", Input: json.RawMessage(`{}`), Deadline: time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := providers.Snapshot{
+		RequestID: job.RequestID.String(), ProviderJobID: "external-fast", State: providers.StateSucceeded,
+		Output: json.RawMessage(`{"segments":[{"start_seconds":0,"end_seconds":1,"text":"test","source_ref":"audio#0-1"}]}`),
+	}
+	if err := repo.ApplySnapshot(context.Background(), job.ID, snapshot, "raw/callback.json"); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.MarkSubmitted(context.Background(), job.ID, providers.JobRef{
+		ProviderJobID: "external-fast", State: providers.StateSubmitted,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := repo.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.ProviderJobID != "external-fast" || updated.State != providers.StateSucceeded {
+		t.Fatalf("updated job = %#v", updated)
+	}
+}
+
 func openProviderJobsTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	databaseURL := os.Getenv("TEST_DATABASE_URL")

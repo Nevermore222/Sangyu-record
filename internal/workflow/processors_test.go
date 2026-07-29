@@ -56,6 +56,9 @@ func TestProviderProcessorsMapKindsTasksAndResourceAccess(t *testing.T) {
 		if input.ProviderKind != expected.kind || input.TaskType != expected.task || len(input.ResourceURLs) != expected.resources {
 			t.Fatalf("%s submission = %#v", expected.node, input)
 		}
+		if expected.resources == 0 && input.ResourceURLs == nil {
+			t.Fatalf("%s resource URLs must encode as an empty array", expected.node)
+		}
 	}
 	if len(reader.kinds) != 2 || reader.kinds[0] != assets.KindAudio || reader.kinds[1] != assets.KindPhoto {
 		t.Fatalf("asset reader kinds = %#v", reader.kinds)

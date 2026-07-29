@@ -38,7 +38,7 @@ func ProviderProcessors(submitter JobSubmitter, sourceReader AssetURLReader, cal
 				return nil, nil, err
 			}
 			if spec.assetKind == "" {
-				return input, nil, nil
+				return input, []string{}, nil
 			}
 			resources, err := sourceReader.URLs(ctx, payload.ProjectID, spec.assetKind)
 			return input, resources, err

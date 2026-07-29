@@ -45,9 +45,13 @@ func (r *PostgresRepository) CreateOrGet(ctx context.Context, input CreateInput)
 }
 
 func (r *PostgresRepository) MarkSubmitted(ctx context.Context, id uuid.UUID, ref providers.JobRef) error {
+	if ref.ProviderJobID == "" {
+		return errors.New("provider job ID is required")
+	}
 	result, err := r.pool.Exec(ctx, `
-		UPDATE provider_jobs SET provider_job_id=$2, state=$3, updated_at=now()
-		WHERE id=$1 AND state='pending_submission'`, id, ref.ProviderJobID, ref.State)
+		UPDATE provider_jobs SET provider_job_id=$2, state=$3, error_code=NULL, error_message=NULL, updated_at=now()
+		WHERE id=$1 AND state IN ('pending_submission','retryable_failed') AND provider_job_id IS NULL`,
+		id, ref.ProviderJobID, ref.State)
 	if err != nil {
 		return err
 	}
@@ -130,8 +134,9 @@ func (r *PostgresRepository) ApplySnapshot(ctx context.Context, id uuid.UUID, sn
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE provider_jobs SET state=$2, normalized_output=$3, raw_response_object_key=NULLIF($4,''),
-			error_code=NULLIF($5,''), error_message=NULLIF($6,''), updated_at=now()
-		WHERE id=$1`, id, snapshot.State, nullJSON(snapshot.Output), rawKey, snapshot.ErrorCode, snapshot.ErrorMessage)
+			error_code=NULLIF($5,''), error_message=NULLIF($6,''),
+			provider_job_id=coalesce(provider_job_id, NULLIF($7,'')), updated_at=now()
+		WHERE id=$1`, id, snapshot.State, nullJSON(snapshot.Output), rawKey, snapshot.ErrorCode, snapshot.ErrorMessage, snapshot.ProviderJobID)
 	if err != nil {
 		return err
 	}
