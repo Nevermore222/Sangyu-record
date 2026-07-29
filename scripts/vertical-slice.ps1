@@ -53,11 +53,12 @@ try {
 
     Invoke-Native go test ./...
     Invoke-Native go vet ./...
-    Invoke-Native npm --prefix skills/mock-memoir test
+    Invoke-Native npm --prefix providers/mock test
     Invoke-Native npm --prefix miniapp test
     Invoke-Native npm --prefix miniapp run typecheck
 
     $env:TEST_API_URL = 'http://localhost:8080'
+    $env:TEST_DATABASE_URL = 'postgres://sangyu:sangyu@localhost:5432/sangyu?sslmode=disable'
     Invoke-Native -Command go -Arguments @(
         'test', './test/integration', '-run', 'TestFoundationVerticalSlice', '-v', '-count=1'
     )

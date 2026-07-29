@@ -1,5 +1,7 @@
 # Sangyu Record Foundation Vertical Slice Implementation Plan
 
+> **Status (2026-07-30):** The Skill Runner architecture in this historical plan is superseded by the external Provider [design](../specs/2026-07-30-external-provider-boundary-design.md) and [implementation plan](2026-07-30-provider-boundary-refactor.md). The original details below are retained as implementation history.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a runnable staff-only vertical slice that creates an elder memoir project, generates a deterministic collection plan, uploads source assets, executes a durable mocked automation workflow, and downloads a basic source-linked PDF.

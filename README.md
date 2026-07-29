@@ -1,46 +1,40 @@
 # 桑榆录（Sangyu Record）
 
-面向线下采集人员的 AI 老年人回忆录自动化项目。当前仓库实现第一阶段基础闭环：创建老人项目、生成采集计划、上传录音和照片、执行可持久化工作流，并输出带内部来源映射的 PDF。
+面向线下采集人员的 AI 老年人回忆录自动化项目。当前仓库负责采集计划、音频与照片上传、持久化工作流、外部能力编排、结果校验、PDF 生成和交付。
 
-> 当前语音转写、照片理解、记忆整理与写作均为确定性模拟实现，用于验证工程流程，不代表真实 AI 生成质量。
+语音转写、照片理解、共同记忆检索和回忆录写作不在本项目内实现。它们分别通过 Media、Knowledge、Agent 三类可替换的异步 HTTP Provider API 接入。`providers/mock` 只是本地测试替身，不代表真实模型、知识库或智能体的生成质量。
 
-## 技术结构
+## 系统边界
 
-- Go API 与异步 Worker：业务状态、工作流编排、对象存储和 PDF 产物
-- PostgreSQL：项目、物料、工作流节点与产物元数据
-- Redis / Asynq：可重试的异步任务队列
-- MinIO：不可变原始物料与生成文件
-- Headless Chromium：HTML 到 PDF
-- Node.js Skill Runner：隔离的多语言 Skill HTTP 契约示例
+- Go API：项目、素材、工作流状态、Provider 回调和 PDF 下载接口
+- Go Worker：Provider 提交与轮询、结果规范化、节点推进和本地 PDF 渲染
+- PostgreSQL：项目、素材、工作流、Provider job/attempt 和产物元数据的权威数据源
+- Redis / Asynq：工作流节点与 Provider poll 队列
+- MinIO：原始素材、Provider 原始响应和 PDF 产物
+- Headless Chromium：HTML 转 PDF
 - 微信原生小程序：工作人员采集与处理界面
 
-## 环境要求
+外部 Provider 不能连接应用数据库或队列、不能持有对象存储凭据，也不能决定下一工作流节点。Media Provider 仅可获得单个素材的 15 分钟只读 URL；Knowledge 和 Agent Provider 只接收结构化数据。
 
-- Windows PowerShell 5.1 或更高版本
-- Go 1.26.x（标准安装路径 `C:\Program Files\Go` 也可自动识别）
-- Node.js 与 npm
-- Docker Desktop，且 Docker Engine 已启动
-- 微信开发者工具（仅手工验证小程序时需要）
+## 本地启动
 
-## 一键验收
+环境要求：Windows PowerShell 5.1+、Go 1.26.x、Node.js/npm 和已启动的 Docker Desktop。
 
-在仓库根目录运行：
+一键构建并验证完整流程：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/vertical-slice.ps1
 ```
 
-脚本会构建并启动完整 Compose 栈、执行数据库迁移、运行 Go/Node/TypeScript 测试，再创建真实测试项目，上传两类测试物料，等待工作流完成并校验下载文件以 `%PDF-` 开头。成功后服务会继续运行，方便小程序联调。
-
-已经构建过镜像时可跳过构建：
+已构建过镜像时可跳过构建：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/vertical-slice.ps1 -SkipBuild
 ```
 
-## 手动启动
+脚本会启动 Compose、执行数据库迁移、运行 Go/Node/TypeScript 测试，创建测试项目并上传音频和照片。验收会确认 Media、Knowledge、Agent 三类 Provider job 均已落库，原始响应与规范化输出分别保存，七个节点只推进一次，最终项目为 `completed` 且下载内容以 `%PDF-` 开头。
 
-复制 `.env.example` 为本地环境配置参考。Docker Compose 已内置开发环境变量，不要求创建 `.env`：
+手动启动：
 
 ```powershell
 docker compose -f deploy/local/compose.yaml up -d --build --wait
@@ -49,39 +43,54 @@ $env:GOOSE_DBSTRING = 'postgres://sangyu:sangyu@localhost:5432/sangyu?sslmode=di
 go run github.com/pressly/goose/v3/cmd/goose@v3.27.3 -dir migrations up
 ```
 
-若不在 Docker 内运行 Go 进程，先加载 `.env.example` 中的变量，然后分别执行：
+## Provider 配置
 
-```powershell
-go run ./cmd/api
-go run ./cmd/worker
+本机直接运行 Go 进程时，按 `.env.example` 设置以下变量：
+
+```text
+MEDIA_PROVIDER_URL=http://localhost:8090
+MEDIA_PROVIDER_TOKEN=local-media-token
+KNOWLEDGE_PROVIDER_URL=http://localhost:8090
+KNOWLEDGE_PROVIDER_TOKEN=local-knowledge-token
+AGENT_PROVIDER_URL=http://localhost:8090
+AGENT_PROVIDER_TOKEN=local-agent-token
+PROVIDER_ALLOWED_HOSTS=localhost:8090
+PROVIDER_CALLBACK_BASE_URL=http://localhost:8080
+PROVIDER_CALLBACK_SECRET=sangyu-local-callback-secret
+PROVIDER_POLL_INTERVAL=2s
 ```
 
-## 小程序
+`PROVIDER_ALLOWED_HOSTS` 是逗号分隔的精确 `host:port` allowlist。Provider 回调地址为 `/v1/provider-callbacks/{kind}/{jobID}`，请求需携带：
 
-1. 在微信开发者工具中导入 `miniapp/project.config.json`。
-2. 开发阶段关闭“不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书”。
-3. 确认 `miniapp/env.ts` 指向 `http://localhost:8080`。
-4. 在“工具 → 构建 npm”生成 `miniprogram_npm`。
-5. 创建项目，分别录音/选择照片并上传，启动自动处理，完成后下载 PDF。
+- `X-Sangyu-Timestamp`：RFC3339 时间戳，与服务器时间差不能超过 5 分钟
+- `X-Sangyu-Signature`：`HMAC-SHA256(secret, timestamp + "." + exact_body)` 的小写十六进制值
 
-如需 CLI 自动编译或截图，还需在开发者工具“设置 → 安全设置”中手动开启服务端口。这是开发者工具的本机安全开关，仓库脚本不会代替用户修改。
-
-## 本地端点
-
-- API 健康检查：<http://localhost:8080/healthz>
-- MinIO API：<http://localhost:9000>
-- MinIO 控制台：<http://localhost:9001>（`sangyu` / `sangyu-local-secret`）
-- Mock Skill Runner：<http://localhost:8090>
-- Chromium DevTools：<http://localhost:9222>
+回调验签在 JSON 解码前完成；回调和轮询最终汇合到同一个幂等终态消费路径。
 
 ## 常用验证
 
 ```powershell
 go test ./...
 go vet ./...
-npm --prefix skills/mock-memoir test
+npm --prefix providers/mock test
 npm --prefix miniapp test
 npm --prefix miniapp run typecheck
 ```
 
-设计说明见 `docs/superpowers/specs/2026-07-28-ai-memoir-platform-design.md`，首期实现计划见 `docs/superpowers/plans/2026-07-28-foundation-vertical-slice.md`。
+本地端点：
+
+- API 健康检查：<http://localhost:8080/healthz>
+- Mock Provider：<http://localhost:8090>
+- MinIO API：<http://localhost:9000>
+- MinIO 控制台：<http://localhost:9001>（`sangyu` / `sangyu-local-secret`）
+- Chromium DevTools：<http://localhost:9222>
+
+Provider 边界设计见 `docs/superpowers/specs/2026-07-30-external-provider-boundary-design.md`，实现计划见 `docs/superpowers/plans/2026-07-30-provider-boundary-refactor.md`。
+
+## 小程序
+
+1. 在微信开发者工具中导入 `miniapp/project.config.json`。
+2. 开发阶段关闭“校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书”。
+3. 确认 `miniapp/env.ts` 指向 `http://localhost:8080`。
+4. 在“工具 -> 构建 npm”生成 `miniprogram_npm`。
+5. 创建项目、上传录音与照片、启动处理并下载 PDF。

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type testAPI struct {
@@ -58,12 +60,89 @@ func TestFoundationVerticalSlice(t *testing.T) {
 
 	run := api.startWorkflow(t, project.ID)
 	api.waitForWorkflow(t, project.ID, run.ID, 60*time.Second)
+	assertProviderAudit(t, run.ID)
 	pdf, artifact := api.downloadLatestArtifact(t, project.ID)
 	if !bytes.HasPrefix(pdf, []byte("%PDF-")) {
 		t.Fatal("artifact is not a PDF")
 	}
 
 	t.Logf("project_id=%s artifact_path=%s", project.ID, artifact.ObjectKey)
+}
+
+func assertProviderAudit(t *testing.T, runID string) {
+	t.Helper()
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Fatal("TEST_DATABASE_URL is required for Provider audit assertions")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	rows, err := pool.Query(ctx, `
+		SELECT provider_kind, count(*)
+		FROM provider_jobs
+		WHERE workflow_run_id = $1
+		GROUP BY provider_kind`, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]int{}
+	for rows.Next() {
+		var kind string
+		var count int
+		if err := rows.Scan(&kind, &count); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		found[kind] = count
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		t.Fatal(err)
+	}
+	rows.Close()
+	for _, kind := range []string{"media", "knowledge", "agent"} {
+		if found[kind] == 0 {
+			t.Fatalf("provider kind %s was not used: %#v", kind, found)
+		}
+	}
+
+	var providerJobs, archivedJobs int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*), count(*) FILTER (
+			WHERE state = 'succeeded' AND normalized_output IS NOT NULL
+			  AND raw_response_object_key IS NOT NULL AND raw_response_object_key <> ''
+		)
+		FROM provider_jobs WHERE workflow_run_id = $1`, runID).Scan(&providerJobs, &archivedJobs); err != nil {
+		t.Fatal(err)
+	}
+	if providerJobs != 6 || archivedJobs != providerJobs {
+		t.Fatalf("provider jobs = %d, archived normalized jobs = %d", providerJobs, archivedJobs)
+	}
+
+	var nodeCount, singleAttemptNodes int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*), count(*) FILTER (WHERE attempts = 1)
+		FROM workflow_nodes WHERE run_id = $1`, runID).Scan(&nodeCount, &singleAttemptNodes); err != nil {
+		t.Fatal(err)
+	}
+	if nodeCount != 7 || singleAttemptNodes != nodeCount {
+		t.Fatalf("workflow nodes = %d, single-attempt nodes = %d", nodeCount, singleAttemptNodes)
+	}
+
+	var manuscript string
+	if err := pool.QueryRow(ctx, `
+		SELECT output::text FROM workflow_nodes
+		WHERE run_id = $1 AND node_name = 'write_book' AND state = 'succeeded'`, runID).Scan(&manuscript); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(manuscript, "audio-fixture#12-20") || !strings.Contains(manuscript, "K-1978-001") {
+		t.Fatalf("manuscript evidence references are incomplete: %s", manuscript)
+	}
 }
 
 func newTestAPI(t *testing.T, baseURL string) *testAPI {
