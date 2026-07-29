@@ -34,7 +34,7 @@ func TestPostgresRepositoryLoadsManuscriptAndSavesArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := `{"title":"岁月留声","chapters":[{"title":"第一章","paragraphs":[{"text":"正文","evidence_refs":["audio#1-2"]}]}]}`
-	if _, err := pool.Exec(ctx, `INSERT INTO workflow_nodes (id, run_id, node_name, state, output) VALUES ($1, $2, 'write_book', 'succeeded', $3)`, uuid.New(), runID, output); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO workflow_nodes (id, run_id, node_name, position, state, output) VALUES ($1, $2, 'write_book', 5, 'succeeded', $3)`, uuid.New(), runID, output); err != nil {
 		t.Fatal(err)
 	}
 

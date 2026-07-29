@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,44 +20,84 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{pool: pool}
 }
 
-func (r *PostgresRepository) CreateRun(ctx context.Context, projectID uuid.UUID) (Run, error) {
+func (r *PostgresRepository) CreateRun(ctx context.Context, input CreateRunInput) (Run, error) {
+	if input.ProjectID == uuid.Nil || len(input.Nodes) == 0 {
+		return Run{}, ErrInvalidRun
+	}
+	if input.Kind != RunKindBook && input.Kind != RunKindVisitAnalysis {
+		return Run{}, ErrInvalidRun
+	}
+	if input.Kind == RunKindVisitAnalysis && input.VisitID == uuid.Nil {
+		return Run{}, ErrInvalidRun
+	}
+	seen := make(map[NodeName]struct{}, len(input.Nodes))
+	for _, name := range input.Nodes {
+		if name == "" {
+			return Run{}, ErrInvalidRun
+		}
+		if _, exists := seen[name]; exists {
+			return Run{}, fmt.Errorf("%w: duplicate workflow node %s", ErrInvalidRun, name)
+		}
+		seen[name] = struct{}{}
+	}
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return Run{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var audioCount, photoCount int
-	err = tx.QueryRow(ctx, `
-		SELECT count(*) FILTER (WHERE kind = 'audio'), count(*) FILTER (WHERE kind = 'photo')
-		FROM assets WHERE project_id = $1 AND state = 'uploaded'`, projectID,
-	).Scan(&audioCount, &photoCount)
-	if err != nil {
-		return Run{}, err
-	}
-	if audioCount == 0 || photoCount == 0 {
-		return Run{}, ErrInsufficientAssets
-	}
-
-	now := time.Now().UTC()
-	run := Run{ID: uuid.New(), ProjectID: projectID, State: NodeQueued, CreatedAt: now, UpdatedAt: now}
-	_, err = tx.Exec(ctx, `
-		INSERT INTO workflow_runs (id, project_id, state, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $4)`, run.ID, run.ProjectID, run.State, now)
-	if err != nil {
-		return Run{}, err
-	}
-	for _, nodeName := range NodeSequence {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO workflow_nodes (id, run_id, node_name, state, created_at, updated_at)
-			VALUES ($1, $2, $3, 'queued', $4, $4)`, uuid.New(), run.ID, nodeName, now)
+	if input.Kind == RunKindBook {
+		var audioCount, photoCount int
+		err = tx.QueryRow(ctx, `
+			SELECT count(*) FILTER (WHERE kind = 'audio'), count(*) FILTER (WHERE kind = 'photo')
+			FROM assets WHERE project_id = $1 AND state = 'uploaded'`, input.ProjectID,
+		).Scan(&audioCount, &photoCount)
 		if err != nil {
 			return Run{}, err
 		}
-		run.Nodes = append(run.Nodes, Node{Name: nodeName, State: NodeQueued})
+		if audioCount == 0 || photoCount == 0 {
+			return Run{}, ErrInsufficientAssets
+		}
+	} else {
+		var exists bool
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM visits WHERE id=$1 AND project_id=$2)`,
+			input.VisitID, input.ProjectID,
+		).Scan(&exists); err != nil {
+			return Run{}, err
+		}
+		if !exists {
+			return Run{}, ErrInvalidRun
+		}
 	}
-	if _, err := tx.Exec(ctx, "UPDATE projects SET state = 'processing', updated_at = $2 WHERE id = $1", projectID, now); err != nil {
+
+	now := time.Now().UTC()
+	run := Run{
+		ID: uuid.New(), ProjectID: input.ProjectID, VisitID: input.VisitID,
+		Kind: input.Kind, State: NodeQueued, CreatedAt: now, UpdatedAt: now,
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO workflow_runs (id, project_id, kind, visit_id, state, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $6)`,
+		run.ID, run.ProjectID, run.Kind, nullableUUID(run.VisitID), run.State, now)
+	if err != nil {
 		return Run{}, err
+	}
+	for position, nodeName := range input.Nodes {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO workflow_nodes (id, run_id, node_name, position, state, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, 'queued', $5, $5)`,
+			uuid.New(), run.ID, nodeName, position, now)
+		if err != nil {
+			return Run{}, err
+		}
+		run.Nodes = append(run.Nodes, Node{Name: nodeName, State: NodeQueued, Position: position})
+	}
+	if input.Kind == RunKindBook {
+		if _, err := tx.Exec(ctx, "UPDATE projects SET state = 'processing', updated_at = $2 WHERE id = $1", input.ProjectID, now); err != nil {
+			return Run{}, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Run{}, err
@@ -91,42 +132,65 @@ func (r *PostgresRepository) SucceedNode(ctx context.Context, payload NodePayloa
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	result, err := tx.Exec(ctx, `
-		UPDATE workflow_nodes SET state = 'succeeded', output = $3, error_code = NULL, updated_at = now()
-		WHERE run_id = $1 AND node_name = $2 AND state = 'running'`, payload.RunID, payload.Node, output)
+
+	var position int
+	err = tx.QueryRow(ctx, `
+		UPDATE workflow_nodes
+		SET state='succeeded', output=$3, error_code=NULL, updated_at=now()
+		WHERE run_id=$1 AND node_name=$2 AND state='running'
+		RETURNING position`, payload.RunID, payload.Node, output).Scan(&position)
+	if errors.Is(err, pgx.ErrNoRows) {
+		var state string
+		err = tx.QueryRow(ctx, `
+			SELECT state, position FROM workflow_nodes
+			WHERE run_id=$1 AND node_name=$2 FOR UPDATE`,
+			payload.RunID, payload.Node).Scan(&state, &position)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && state != string(NodeSucceeded)) {
+			return nil, ErrNodeNotFound
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	if result.RowsAffected() == 0 {
-		var state string
-		err := tx.QueryRow(ctx, `
-			SELECT state FROM workflow_nodes WHERE run_id=$1 AND node_name=$2 FOR UPDATE`,
-			payload.RunID, payload.Node).Scan(&state)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNodeNotFound
-		}
-		if err != nil {
-			return nil, err
-		}
-		if state != string(NodeSucceeded) {
-			return nil, ErrNodeNotFound
-		}
-	}
 
-	nextName, hasNext := nextNode(payload.Node)
-	if !hasNext {
-		if _, err := tx.Exec(ctx, "UPDATE workflow_runs SET state = 'succeeded', updated_at = now() WHERE id = $1", payload.RunID); err != nil {
-			return nil, err
-		}
-		if _, err := tx.Exec(ctx, "UPDATE projects SET state = 'completed', updated_at = now() WHERE id = $1", payload.ProjectID); err != nil {
-			return nil, err
-		}
-		return nil, tx.Commit(ctx)
+	var kind string
+	var visitID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		SELECT kind, COALESCE(visit_id, '00000000-0000-0000-0000-000000000000'::uuid)
+		FROM workflow_runs WHERE id=$1`, payload.RunID).Scan(&kind, &visitID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrRunNotFound
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if err != nil {
 		return nil, err
 	}
-	return &NodePayload{RunID: payload.RunID, ProjectID: payload.ProjectID, Node: nextName}, nil
+
+	var nextName string
+	err = tx.QueryRow(ctx, `
+		SELECT node_name FROM workflow_nodes
+		WHERE run_id=$1 AND position>$2
+		ORDER BY position LIMIT 1`, payload.RunID, position).Scan(&nextName)
+	if err == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		return &NodePayload{
+			RunID: payload.RunID, ProjectID: payload.ProjectID, VisitID: visitID,
+			Kind: RunKind(kind), Node: NodeName(nextName),
+		}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, "UPDATE workflow_runs SET state='succeeded', updated_at=now() WHERE id=$1", payload.RunID); err != nil {
+		return nil, err
+	}
+	if RunKind(kind) == RunKindBook {
+		if _, err := tx.Exec(ctx, "UPDATE projects SET state='completed', updated_at=now() WHERE id=$1", payload.ProjectID); err != nil {
+			return nil, err
+		}
+	}
+	return nil, tx.Commit(ctx)
 }
 
 func (r *PostgresRepository) FailNode(ctx context.Context, payload NodePayload, code string) error {
@@ -136,44 +200,61 @@ func (r *PostgresRepository) FailNode(ctx context.Context, payload NodePayload, 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	result, err := tx.Exec(ctx, `
-		UPDATE workflow_nodes SET state = 'failed', error_code = $3, updated_at = now()
-		WHERE run_id = $1 AND node_name = $2 AND state IN ('running','failed')`, payload.RunID, payload.Node, code)
+		UPDATE workflow_nodes SET state='failed', error_code=$3, updated_at=now()
+		WHERE run_id=$1 AND node_name=$2 AND state IN ('running','failed')`,
+		payload.RunID, payload.Node, code)
 	if err != nil {
 		return err
 	}
 	if result.RowsAffected() == 0 {
 		return ErrNodeNotFound
 	}
-	if _, err := tx.Exec(ctx, "UPDATE workflow_runs SET state = 'failed', error_code = $2, updated_at = now() WHERE id = $1", payload.RunID, code); err != nil {
+	if _, err := tx.Exec(ctx, `
+		UPDATE workflow_runs SET state='failed', error_code=$2, updated_at=now() WHERE id=$1`,
+		payload.RunID, code); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, "UPDATE projects SET state = 'exception', updated_at = now() WHERE id = $1", payload.ProjectID); err != nil {
+	var kind string
+	var visitID uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT kind, COALESCE(visit_id, '00000000-0000-0000-0000-000000000000'::uuid)
+		FROM workflow_runs WHERE id=$1`, payload.RunID).Scan(&kind, &visitID); err != nil {
 		return err
+	}
+	if RunKind(kind) == RunKindBook {
+		if _, err := tx.Exec(ctx, "UPDATE projects SET state='exception', updated_at=now() WHERE id=$1", payload.ProjectID); err != nil {
+			return err
+		}
+	} else if visitID != uuid.Nil {
+		if _, err := tx.Exec(ctx, "UPDATE visits SET state='failed', error_code=$2, updated_at=now() WHERE id=$1", visitID, code); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }
 
 func (r *PostgresRepository) LatestRun(ctx context.Context, projectID uuid.UUID) (Run, error) {
 	var run Run
-	var state string
+	var state, kind string
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, project_id, state, coalesce(error_code, ''), created_at, updated_at
-		FROM workflow_runs WHERE project_id = $1 ORDER BY created_at DESC LIMIT 1`, projectID,
-	).Scan(&run.ID, &run.ProjectID, &state, &run.ErrorCode, &run.CreatedAt, &run.UpdatedAt)
+		SELECT id, project_id, COALESCE(visit_id, '00000000-0000-0000-0000-000000000000'::uuid),
+		       kind, state, COALESCE(error_code, ''), created_at, updated_at
+		FROM workflow_runs
+		WHERE project_id=$1 AND kind='book'
+		ORDER BY created_at DESC LIMIT 1`, projectID).Scan(
+		&run.ID, &run.ProjectID, &run.VisitID, &kind, &state,
+		&run.ErrorCode, &run.CreatedAt, &run.UpdatedAt,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Run{}, ErrRunNotFound
 	}
 	if err != nil {
 		return Run{}, err
 	}
-	run.State = NodeState(state)
+	run.Kind, run.State = RunKind(kind), NodeState(state)
 	rows, err := r.pool.Query(ctx, `
-		SELECT node_name, state, coalesce(error_code, ''), attempts
-		FROM workflow_nodes WHERE run_id = $1
-		ORDER BY CASE node_name
-			WHEN 'transcribe' THEN 1 WHEN 'understand_photo' THEN 2 WHEN 'build_memory' THEN 3
-			WHEN 'retrieve_shared_memory' THEN 4 WHEN 'plan_book' THEN 5
-			WHEN 'write_book' THEN 6 WHEN 'render_pdf' THEN 7 END`, run.ID)
+		SELECT node_name, state, COALESCE(error_code, ''), attempts, position
+		FROM workflow_nodes WHERE run_id=$1 ORDER BY position`, run.ID)
 	if err != nil {
 		return Run{}, err
 	}
@@ -181,7 +262,7 @@ func (r *PostgresRepository) LatestRun(ctx context.Context, projectID uuid.UUID)
 	for rows.Next() {
 		var node Node
 		var name, nodeState string
-		if err := rows.Scan(&name, &nodeState, &node.ErrorCode, &node.Attempts); err != nil {
+		if err := rows.Scan(&name, &nodeState, &node.ErrorCode, &node.Attempts, &node.Position); err != nil {
 			return Run{}, err
 		}
 		node.Name, node.State = NodeName(name), NodeState(nodeState)
@@ -190,11 +271,9 @@ func (r *PostgresRepository) LatestRun(ctx context.Context, projectID uuid.UUID)
 	return run, rows.Err()
 }
 
-func nextNode(current NodeName) (NodeName, bool) {
-	for index, node := range NodeSequence {
-		if node == current && index+1 < len(NodeSequence) {
-			return NodeSequence[index+1], true
-		}
+func nullableUUID(value uuid.UUID) any {
+	if value == uuid.Nil {
+		return nil
 	}
-	return "", false
+	return value
 }

@@ -49,7 +49,11 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	}
 
 	repo := NewPostgresRepository(pool)
-	run, err := repo.CreateRun(ctx, project.ID)
+	run, err := repo.CreateRun(ctx, CreateRunInput{
+		ProjectID: project.ID,
+		Kind:      RunKindBook,
+		Nodes:     NodeSequence,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,5 +88,52 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	claimed, err = repo.ClaimNode(ctx, payload)
 	if err != nil || claimed {
 		t.Fatalf("duplicate claimed = %v, err = %v", claimed, err)
+	}
+
+	staffID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO staff (id, wechat_openid, display_name, state)
+		VALUES ($1, $2, 'Workflow Tester', 'active')`, staffID, staffID.String()); err != nil {
+		t.Fatal(err)
+	}
+	visitID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO visits (
+			id, project_id, sequence, staff_id, visited_at, state, created_at, updated_at
+		) VALUES ($1, $2, 1, $3, now(), 'draft', now(), now())`,
+		visitID, project.ID, staffID); err != nil {
+		t.Fatal(err)
+	}
+	visitRun, err := repo.CreateRun(ctx, CreateRunInput{
+		ProjectID: project.ID,
+		VisitID:   visitID,
+		Kind:      RunKindVisitAnalysis,
+		Nodes:     VisitAnalysisSequence,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visitRun.Kind != RunKindVisitAnalysis || visitRun.VisitID != visitID || len(visitRun.Nodes) != len(VisitAnalysisSequence) {
+		t.Fatalf("visit run = %#v", visitRun)
+	}
+	for position, node := range visitRun.Nodes {
+		if node.Name != VisitAnalysisSequence[position] || node.Position != position {
+			t.Fatalf("visit node %d = %#v", position, node)
+		}
+	}
+	visitPayload := NodePayload{
+		RunID: visitRun.ID, ProjectID: project.ID, VisitID: visitID,
+		Kind: RunKindVisitAnalysis, Node: NodeVisitTranscribe,
+	}
+	claimed, err = repo.ClaimNode(ctx, visitPayload)
+	if err != nil || !claimed {
+		t.Fatalf("visit claimed = %t, err = %v", claimed, err)
+	}
+	visitNext, err := repo.SucceedNode(ctx, visitPayload, json.RawMessage(`{"ok":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if visitNext == nil || visitNext.Node != NodeVisitUnderstandPhoto || visitNext.VisitID != visitID || visitNext.Kind != RunKindVisitAnalysis {
+		t.Fatalf("visit next = %#v", visitNext)
 	}
 }
