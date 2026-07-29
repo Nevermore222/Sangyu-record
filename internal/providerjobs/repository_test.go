@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nevermore222/sangyu-record/internal/providers"
+	"github.com/nevermore222/sangyu-record/internal/testdb"
 )
 
 func TestTerminalProviderJobIsConsumedOnce(t *testing.T) {
@@ -76,6 +77,7 @@ func openProviderJobsTestPool(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	testdb.Serialize(t, pool)
 	return pool
 }
 

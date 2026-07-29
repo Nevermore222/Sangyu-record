@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nevermore222/sangyu-record/internal/platform"
+	"github.com/nevermore222/sangyu-record/internal/testdb"
 )
 
 func TestPostgresRepositoryRoundTrip(t *testing.T) {
@@ -19,7 +20,8 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close)
+	testdb.Serialize(t, pool)
 	if _, err := pool.Exec(ctx, "TRUNCATE collection_plan_items, projects CASCADE"); err != nil {
 		t.Fatal(err)
 	}
