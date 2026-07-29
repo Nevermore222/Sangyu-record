@@ -45,6 +45,20 @@ func (r *memoryJobsRepository) Get(_ context.Context, id uuid.UUID) (Job, error)
 	return r.jobs[id], nil
 }
 
+func (r *memoryJobsRepository) FindUnconsumedByWorkflowNode(
+	_ context.Context,
+	projectID uuid.UUID,
+	runID uuid.UUID,
+	node string,
+) (Job, error) {
+	for id, job := range r.jobs {
+		if job.ProjectID == projectID && job.WorkflowRunID == runID && job.WorkflowNode == node && !r.consumed[id] {
+			return job, nil
+		}
+	}
+	return Job{}, ErrNotFound
+}
+
 func (r *memoryJobsRepository) StartAttempt(_ context.Context, id uuid.UUID, operation string, state providers.State) (Attempt, error) {
 	r.attemptSeq[id]++
 	return Attempt{ID: uuid.New(), ProviderJobID: id, Attempt: r.attemptSeq[id], Operation: operation, State: state}, nil
@@ -71,6 +85,20 @@ func (r *memoryJobsRepository) ConsumeTerminal(_ context.Context, id uuid.UUID) 
 	r.consumed[id] = true
 	return Outcome{JobID: id, ProjectID: job.ProjectID, WorkflowRunID: job.WorkflowRunID, WorkflowNode: job.WorkflowNode,
 		State: job.State, Output: job.NormalizedOutput, ErrorCode: job.ErrorCode}, true, nil
+}
+
+func (r *memoryJobsRepository) PeekTerminal(_ context.Context, id uuid.UUID) (Outcome, bool, error) {
+	job := r.jobs[id]
+	if !job.State.Terminal() || r.consumed[id] {
+		return Outcome{}, false, nil
+	}
+	return Outcome{JobID: id, ProjectID: job.ProjectID, WorkflowRunID: job.WorkflowRunID, WorkflowNode: job.WorkflowNode,
+		State: job.State, Output: job.NormalizedOutput, ErrorCode: job.ErrorCode}, true, nil
+}
+
+func (r *memoryJobsRepository) MarkConsumed(_ context.Context, id uuid.UUID) error {
+	r.consumed[id] = true
+	return nil
 }
 
 type memoryRawStore struct{}
@@ -134,6 +162,9 @@ func TestDuplicateTerminalCallbackIsConsumedOnce(t *testing.T) {
 	if err := service.ApplyCallback(context.Background(), job.ID, snapshot); err != nil {
 		t.Fatal(err)
 	}
+	if repo.attemptSeq[job.ID] != 2 {
+		t.Fatalf("attempts after duplicate callback = %d, want submit plus one callback", repo.attemptSeq[job.ID])
+	}
 	_, ok, err := service.ConsumeTerminal(context.Background(), job.ID)
 	if err != nil || !ok {
 		t.Fatalf("first consume = %v, %v", ok, err)
@@ -141,6 +172,51 @@ func TestDuplicateTerminalCallbackIsConsumedOnce(t *testing.T) {
 	_, ok, err = service.ConsumeTerminal(context.Background(), job.ID)
 	if err != nil || ok {
 		t.Fatalf("second consume = %v, %v", ok, err)
+	}
+}
+
+func TestCallbackRequiresExactProviderJobIdentity(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ApplyCallback(context.Background(), job.ID, providers.Snapshot{
+		ProviderJobID: "external-1", State: providers.StateProcessing,
+	}); err == nil {
+		t.Fatal("callback without request ID was accepted")
+	}
+	if err := service.ApplyCallback(context.Background(), job.ID, providers.Snapshot{
+		RequestID: job.RequestID.String(), ProviderJobID: "wrong-job", State: providers.StateProcessing,
+	}); err == nil {
+		t.Fatal("callback for a different Provider job was accepted")
+	}
+}
+
+func TestRefreshRejectsSnapshotForDifferentJob(t *testing.T) {
+	provider := &fakeProvider{
+		ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted},
+		snapshot: providers.Snapshot{
+			RequestID: "wrong-request", ProviderJobID: "external-1", State: providers.StateProcessing,
+		},
+	}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Refresh(context.Background(), job.ID); err == nil {
+		t.Fatal("status snapshot for a different request was accepted")
+	}
+	unchanged, err := service.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.State != providers.StateSubmitted {
+		t.Fatalf("job state = %s, want submitted", unchanged.State)
 	}
 }
 

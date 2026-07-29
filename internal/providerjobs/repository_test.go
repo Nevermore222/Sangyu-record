@@ -46,6 +46,38 @@ func TestTerminalProviderJobIsConsumedOnce(t *testing.T) {
 	}
 }
 
+func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
+	pool := openProviderJobsTestPool(t)
+	projectID, runID := insertProviderJobParents(t, pool)
+	repo := NewPostgresRepository(pool)
+	job, _, err := repo.CreateOrGet(context.Background(), CreateInput{
+		RequestID: uuid.New(), ProjectID: projectID, WorkflowRunID: runID,
+		WorkflowNode: "transcribe", ProviderKind: providers.KindMedia,
+		TaskType: providers.TaskAudioTranscription, IdempotencyKey: runID.String() + ":transcribe",
+		Input: json.RawMessage(`{}`), Deadline: time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ApplySnapshot(context.Background(), job.ID, providers.Snapshot{
+		ProviderJobID: "external-ack", State: providers.StateSucceeded,
+		Output: json.RawMessage(`{"segments":[{"source_ref":"audio#0-1"}]}`),
+	}, "raw/status.json"); err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if _, available, err := repo.PeekTerminal(context.Background(), job.ID); err != nil || !available {
+			t.Fatalf("peek %d = %v, %v", attempt, available, err)
+		}
+	}
+	if err := repo.MarkConsumed(context.Background(), job.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, available, err := repo.PeekTerminal(context.Background(), job.ID); err != nil || available {
+		t.Fatalf("peek after acknowledgement = %v, %v", available, err)
+	}
+}
+
 func TestCreateOrGetUsesIdempotencyKey(t *testing.T) {
 	pool := openProviderJobsTestPool(t)
 	projectID, runID := insertProviderJobParents(t, pool)

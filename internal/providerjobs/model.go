@@ -75,8 +75,11 @@ type Repository interface {
 	CreateOrGet(context.Context, CreateInput) (Job, bool, error)
 	MarkSubmitted(context.Context, uuid.UUID, providers.JobRef) error
 	Get(context.Context, uuid.UUID) (Job, error)
+	FindUnconsumedByWorkflowNode(context.Context, uuid.UUID, uuid.UUID, string) (Job, error)
 	StartAttempt(context.Context, uuid.UUID, string, providers.State) (Attempt, error)
 	FinishAttempt(context.Context, Attempt) error
 	ApplySnapshot(context.Context, uuid.UUID, providers.Snapshot, string) error
+	PeekTerminal(context.Context, uuid.UUID) (Outcome, bool, error)
+	MarkConsumed(context.Context, uuid.UUID) error
 	ConsumeTerminal(context.Context, uuid.UUID) (Outcome, bool, error)
 }

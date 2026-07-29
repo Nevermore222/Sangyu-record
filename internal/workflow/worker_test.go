@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -12,9 +13,10 @@ import (
 )
 
 type memoryNodeRepository struct {
-	states       map[string]NodeState
-	next         *NodePayload
-	succeedCalls int
+	states         map[string]NodeState
+	next           *NodePayload
+	succeedCalls   int
+	succeedErrOnce error
 }
 
 func newMemoryNodeRepository() *memoryNodeRepository {
@@ -36,6 +38,11 @@ func (r *memoryNodeRepository) ClaimNode(_ context.Context, payload NodePayload)
 
 func (r *memoryNodeRepository) SucceedNode(_ context.Context, payload NodePayload, _ json.RawMessage) (*NodePayload, error) {
 	r.succeedCalls++
+	if r.succeedErrOnce != nil {
+		err := r.succeedErrOnce
+		r.succeedErrOnce = nil
+		return nil, err
+	}
 	r.states[nodeKey(payload)] = NodeSucceeded
 	return r.next, nil
 }
@@ -112,18 +119,31 @@ type memoryProviderJobs struct {
 	job        providerjobs.Job
 	outcome    providerjobs.Outcome
 	consumable bool
+	markCalls  int
 }
 
 func (j *memoryProviderJobs) Refresh(_ context.Context, _ uuid.UUID) (providerjobs.Job, error) {
 	return j.job, nil
 }
 
-func (j *memoryProviderJobs) ConsumeTerminal(_ context.Context, _ uuid.UUID) (providerjobs.Outcome, bool, error) {
+func (j *memoryProviderJobs) FindUnconsumedByWorkflowNode(_ context.Context, _, _ uuid.UUID, _ string) (providerjobs.Job, error) {
+	if j.job.ID == uuid.Nil || !j.consumable {
+		return providerjobs.Job{}, providerjobs.ErrNotFound
+	}
+	return j.job, nil
+}
+
+func (j *memoryProviderJobs) PeekTerminal(_ context.Context, _ uuid.UUID) (providerjobs.Outcome, bool, error) {
 	if !j.consumable {
 		return providerjobs.Outcome{}, false, nil
 	}
-	j.consumable = false
 	return j.outcome, true, nil
+}
+
+func (j *memoryProviderJobs) MarkConsumed(_ context.Context, _ uuid.UUID) error {
+	j.markCalls++
+	j.consumable = false
+	return nil
 }
 
 func TestPendingProviderJobLeavesNodeRunningAndQueuesPoll(t *testing.T) {
@@ -145,6 +165,22 @@ func TestPendingProviderJobLeavesNodeRunningAndQueuesPoll(t *testing.T) {
 	}
 	if len(queue.providerPolls) != 1 || queue.providerPolls[0].JobID != jobID {
 		t.Fatalf("polls = %#v", queue.providerPolls)
+	}
+}
+
+func TestRetryOfRunningProviderNodeQueuesPoll(t *testing.T) {
+	payload := NodePayload{RunID: uuid.New(), ProjectID: uuid.New(), Node: NodeTranscribe}
+	repo := newMemoryNodeRepository()
+	repo.states[nodeKey(payload)] = NodeRunning
+	queue := &memoryQueue{}
+	jobs := &memoryProviderJobs{job: providerjobs.Job{ID: uuid.New(), State: providers.StateSubmitted}, consumable: true}
+	worker := NewWorker(repo, nil, queue, jobs, time.Second)
+
+	if err := worker.Process(context.Background(), payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(queue.providerPolls) != 1 || queue.providerPolls[0].JobID != jobs.job.ID {
+		t.Fatalf("provider polls = %#v", queue.providerPolls)
 	}
 }
 
@@ -177,5 +213,37 @@ func TestConsumedProviderSuccessAdvancesWorkflowOnce(t *testing.T) {
 	}
 	if len(queue.nodePayloads) != 1 || queue.nodePayloads[0] != next {
 		t.Fatalf("next nodes = %#v", queue.nodePayloads)
+	}
+	if jobs.markCalls != 1 {
+		t.Fatalf("mark consumed calls = %d", jobs.markCalls)
+	}
+}
+
+func TestProviderOutcomeRemainsAvailableWhenNodePersistenceFails(t *testing.T) {
+	payload := NodePayload{RunID: uuid.New(), ProjectID: uuid.New(), Node: NodeTranscribe}
+	repo := newMemoryNodeRepository()
+	repo.succeedErrOnce = errors.New("database unavailable")
+	jobs := &memoryProviderJobs{
+		job: providerjobs.Job{ID: uuid.New(), State: providers.StateSucceeded},
+		outcome: providerjobs.Outcome{
+			ProjectID: payload.ProjectID, WorkflowRunID: payload.RunID, WorkflowNode: string(payload.Node),
+			State: providers.StateSucceeded, Output: json.RawMessage(`{"segments":[]}`),
+		},
+		consumable: true,
+	}
+	worker := NewWorker(repo, nil, &memoryQueue{}, jobs, time.Second)
+	poll := ProviderPollPayload{JobID: jobs.job.ID}
+
+	if err := worker.ProcessProviderPoll(context.Background(), poll); err == nil {
+		t.Fatal("first poll error = nil, want persistence failure")
+	}
+	if !jobs.consumable || jobs.markCalls != 0 {
+		t.Fatal("outcome was consumed before node persistence")
+	}
+	if err := worker.ProcessProviderPoll(context.Background(), poll); err != nil {
+		t.Fatal(err)
+	}
+	if jobs.consumable || jobs.markCalls != 1 {
+		t.Fatal("outcome was not consumed after successful retry")
 	}
 }

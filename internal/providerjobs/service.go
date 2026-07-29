@@ -92,8 +92,12 @@ func (s *Service) submitRemote(ctx context.Context, job Job) (Job, error) {
 	if remoteErr != nil {
 		state, code := stateForError(remoteErr)
 		attempt.State, attempt.ErrorCode = state, code
-		_ = s.repo.FinishAttempt(ctx, attempt)
-		_ = s.repo.ApplySnapshot(ctx, job.ID, providers.Snapshot{State: state, ErrorCode: code, ErrorMessage: remoteErr.Error()}, "")
+		if err := s.repo.FinishAttempt(ctx, attempt); err != nil {
+			return Job{}, err
+		}
+		if err := s.repo.ApplySnapshot(ctx, job.ID, providers.Snapshot{State: state, ErrorCode: code, ErrorMessage: remoteErr.Error()}, ""); err != nil {
+			return Job{}, err
+		}
 		return s.repo.Get(ctx, job.ID)
 	}
 	if ref.State == "" {
@@ -143,7 +147,10 @@ func (s *Service) Refresh(ctx context.Context, jobID uuid.UUID) (Job, error) {
 	attempt.ElapsedMS = s.now().Sub(started).Milliseconds()
 	if remoteErr != nil {
 		state, code := stateForError(remoteErr)
-		snapshot = providers.Snapshot{State: state, ErrorCode: code, ErrorMessage: remoteErr.Error()}
+		snapshot = providers.Snapshot{
+			RequestID: job.RequestID.String(), ProviderJobID: job.ProviderJobID,
+			State: state, ErrorCode: code, ErrorMessage: remoteErr.Error(),
+		}
 	}
 	return s.applyAttemptSnapshot(ctx, job, attempt, snapshot)
 }
@@ -153,11 +160,14 @@ func (s *Service) ApplyCallback(ctx context.Context, jobID uuid.UUID, snapshot p
 	if err != nil {
 		return err
 	}
-	if snapshot.RequestID != "" && snapshot.RequestID != job.RequestID.String() {
-		return errors.New("callback request ID does not match provider job")
+	if err := validateSnapshotIdentity(job, snapshot); err != nil {
+		return err
 	}
-	if snapshot.ProviderJobID != "" && job.ProviderJobID != "" && snapshot.ProviderJobID != job.ProviderJobID {
-		return errors.New("callback provider job ID does not match")
+	if job.State.Terminal() {
+		if job.State == snapshot.State {
+			return nil
+		}
+		return ErrTerminalConflict
 	}
 	attempt, err := s.repo.StartAttempt(ctx, job.ID, "callback", job.State)
 	if err != nil {
@@ -168,6 +178,13 @@ func (s *Service) ApplyCallback(ctx context.Context, jobID uuid.UUID, snapshot p
 }
 
 func (s *Service) applyAttemptSnapshot(ctx context.Context, job Job, attempt Attempt, snapshot providers.Snapshot) (Job, error) {
+	if err := validateSnapshotIdentity(job, snapshot); err != nil {
+		attempt.State, attempt.ErrorCode = providers.StatePermanentlyFailed, "invalid_provider_identity"
+		if finishErr := s.repo.FinishAttempt(ctx, attempt); finishErr != nil {
+			return Job{}, finishErr
+		}
+		return Job{}, err
+	}
 	rawKey := ""
 	if len(snapshot.Raw) > 0 {
 		key, err := s.rawStore.Put(ctx, job, attempt.Attempt, snapshot.Raw)
@@ -195,8 +212,38 @@ func (s *Service) applyAttemptSnapshot(ctx context.Context, job Job, attempt Att
 	return s.repo.Get(ctx, job.ID)
 }
 
+func validateSnapshotIdentity(job Job, snapshot providers.Snapshot) error {
+	if snapshot.RequestID == "" || snapshot.RequestID != job.RequestID.String() {
+		return errors.New("provider snapshot request ID does not match job")
+	}
+	if snapshot.ProviderJobID == "" {
+		return errors.New("provider snapshot job ID is required")
+	}
+	if job.ProviderJobID != "" && snapshot.ProviderJobID != job.ProviderJobID {
+		return errors.New("provider snapshot job ID does not match")
+	}
+	return nil
+}
+
 func (s *Service) ConsumeTerminal(ctx context.Context, jobID uuid.UUID) (Outcome, bool, error) {
 	return s.repo.ConsumeTerminal(ctx, jobID)
+}
+
+func (s *Service) FindUnconsumedByWorkflowNode(
+	ctx context.Context,
+	projectID uuid.UUID,
+	runID uuid.UUID,
+	node string,
+) (Job, error) {
+	return s.repo.FindUnconsumedByWorkflowNode(ctx, projectID, runID, node)
+}
+
+func (s *Service) PeekTerminal(ctx context.Context, jobID uuid.UUID) (Outcome, bool, error) {
+	return s.repo.PeekTerminal(ctx, jobID)
+}
+
+func (s *Service) MarkConsumed(ctx context.Context, jobID uuid.UUID) error {
+	return s.repo.MarkConsumed(ctx, jobID)
 }
 
 func (s *Service) Get(ctx context.Context, jobID uuid.UUID) (Job, error) {

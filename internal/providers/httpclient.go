@@ -51,22 +51,38 @@ func NewHTTPClient(cfg HTTPConfig, client *http.Client) (*HTTPClient, error) {
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return nil, fmt.Errorf("invalid provider base URL %q", cfg.BaseURL)
 	}
-	allowed := false
+	allowedHosts := make(map[string]struct{}, len(cfg.AllowedHosts))
 	for _, host := range cfg.AllowedHosts {
-		if strings.EqualFold(strings.TrimSpace(host), parsed.Host) {
-			allowed = true
-			break
+		if host = strings.TrimSpace(host); host != "" {
+			allowedHosts[strings.ToLower(host)] = struct{}{}
 		}
 	}
-	if !allowed {
+	if _, allowed := allowedHosts[strings.ToLower(parsed.Host)]; !allowed {
 		return nil, ErrHostNotAllowed
 	}
 	limit := cfg.MaxResponseBytes
 	if limit <= 0 {
 		limit = defaultMaxResponseBytes
 	}
+	httpClient := *client
+	previousRedirectCheck := client.CheckRedirect
+	httpClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		if request.URL.Scheme != "http" && request.URL.Scheme != "https" {
+			return ErrHostNotAllowed
+		}
+		if _, allowed := allowedHosts[strings.ToLower(request.URL.Host)]; !allowed {
+			return ErrHostNotAllowed
+		}
+		if previousRedirectCheck != nil {
+			return previousRedirectCheck(request, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
 	return &HTTPClient{
-		baseURL: strings.TrimRight(cfg.BaseURL, "/"), token: cfg.Token, http: client, maxResponseBytes: limit,
+		baseURL: strings.TrimRight(cfg.BaseURL, "/"), token: cfg.Token, http: &httpClient, maxResponseBytes: limit,
 	}, nil
 }
 

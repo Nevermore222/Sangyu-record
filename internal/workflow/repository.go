@@ -98,7 +98,19 @@ func (r *PostgresRepository) SucceedNode(ctx context.Context, payload NodePayloa
 		return nil, err
 	}
 	if result.RowsAffected() == 0 {
-		return nil, ErrNodeNotFound
+		var state string
+		err := tx.QueryRow(ctx, `
+			SELECT state FROM workflow_nodes WHERE run_id=$1 AND node_name=$2 FOR UPDATE`,
+			payload.RunID, payload.Node).Scan(&state)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNodeNotFound
+		}
+		if err != nil {
+			return nil, err
+		}
+		if state != string(NodeSucceeded) {
+			return nil, ErrNodeNotFound
+		}
 	}
 
 	nextName, hasNext := nextNode(payload.Node)
@@ -123,10 +135,14 @@ func (r *PostgresRepository) FailNode(ctx context.Context, payload NodePayload, 
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `
+	result, err := tx.Exec(ctx, `
 		UPDATE workflow_nodes SET state = 'failed', error_code = $3, updated_at = now()
-		WHERE run_id = $1 AND node_name = $2`, payload.RunID, payload.Node, code); err != nil {
+		WHERE run_id = $1 AND node_name = $2 AND state IN ('running','failed')`, payload.RunID, payload.Node, code)
+	if err != nil {
 		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNodeNotFound
 	}
 	if _, err := tx.Exec(ctx, "UPDATE workflow_runs SET state = 'failed', error_code = $2, updated_at = now() WHERE id = $1", payload.RunID, code); err != nil {
 		return err

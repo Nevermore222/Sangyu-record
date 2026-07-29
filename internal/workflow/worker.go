@@ -24,7 +24,9 @@ type Enqueuer interface {
 
 type ProviderJobs interface {
 	Refresh(context.Context, uuid.UUID) (providerjobs.Job, error)
-	ConsumeTerminal(context.Context, uuid.UUID) (providerjobs.Outcome, bool, error)
+	FindUnconsumedByWorkflowNode(context.Context, uuid.UUID, uuid.UUID, string) (providerjobs.Job, error)
+	PeekTerminal(context.Context, uuid.UUID) (providerjobs.Outcome, bool, error)
+	MarkConsumed(context.Context, uuid.UUID) error
 }
 
 type ProcessResult struct {
@@ -65,8 +67,11 @@ func NewWorker(repo NodeRepository, processors map[NodeName]Processor, queue Enq
 
 func (w *Worker) Process(ctx context.Context, payload NodePayload) error {
 	claimed, err := w.repo.ClaimNode(ctx, payload)
-	if err != nil || !claimed {
+	if err != nil {
 		return err
+	}
+	if !claimed {
+		return w.recoverProviderPoll(ctx, payload)
 	}
 	processor, ok := w.processors[payload.Node]
 	if !ok {
@@ -95,6 +100,20 @@ func (w *Worker) Process(ctx context.Context, payload NodePayload) error {
 	return w.queue.EnqueueNode(ctx, *next)
 }
 
+func (w *Worker) recoverProviderPoll(ctx context.Context, payload NodePayload) error {
+	if w.jobs == nil || w.queue == nil {
+		return nil
+	}
+	job, err := w.jobs.FindUnconsumedByWorkflowNode(ctx, payload.ProjectID, payload.RunID, string(payload.Node))
+	if errors.Is(err, providerjobs.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return w.queue.EnqueueProviderPoll(ctx, ProviderPollPayload{JobID: job.ID}, 0)
+}
+
 func (w *Worker) ProcessProviderPoll(ctx context.Context, payload ProviderPollPayload) error {
 	if w.jobs == nil {
 		return ErrProcessorMissing
@@ -109,8 +128,8 @@ func (w *Worker) ProcessProviderPoll(ctx context.Context, payload ProviderPollPa
 		}
 		return w.queue.EnqueueProviderPoll(ctx, payload, w.pollEvery)
 	}
-	outcome, consumed, err := w.jobs.ConsumeTerminal(ctx, payload.JobID)
-	if err != nil || !consumed {
+	outcome, available, err := w.jobs.PeekTerminal(ctx, payload.JobID)
+	if err != nil || !available {
 		return err
 	}
 	node := NodePayload{
@@ -121,11 +140,19 @@ func (w *Worker) ProcessProviderPoll(ctx context.Context, payload ProviderPollPa
 		if code == "" {
 			code = "provider_failed"
 		}
-		return w.repo.FailNode(ctx, node, code)
+		if err := w.repo.FailNode(ctx, node, code); err != nil {
+			return err
+		}
+		return w.jobs.MarkConsumed(ctx, payload.JobID)
 	}
 	next, err := w.repo.SucceedNode(ctx, node, outcome.Output)
-	if err != nil || next == nil || w.queue == nil {
+	if err != nil {
 		return err
 	}
-	return w.queue.EnqueueNode(ctx, *next)
+	if next != nil && w.queue != nil {
+		if err := w.queue.EnqueueNode(ctx, *next); err != nil {
+			return err
+		}
+	}
+	return w.jobs.MarkConsumed(ctx, payload.JobID)
 }

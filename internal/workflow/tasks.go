@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -38,6 +39,9 @@ func (q *AsynqEnqueuer) EnqueueNode(ctx context.Context, payload NodePayload) er
 		asynq.MaxRetry(3),
 		asynq.Timeout(10*time.Minute),
 	)
+	if errors.Is(err, asynq.ErrTaskIDConflict) {
+		return nil
+	}
 	return err
 }
 

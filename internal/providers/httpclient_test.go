@@ -48,6 +48,29 @@ func TestHTTPClientRejectsBaseURLOutsideAllowList(t *testing.T) {
 	}
 }
 
+func TestHTTPClientRejectsRedirectOutsideAllowList(t *testing.T) {
+	reachedTarget := false
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reachedTarget = true
+		_, _ = w.Write([]byte(`{"provider_job_id":"escaped","state":"submitted"}`))
+	}))
+	defer target.Close()
+	redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL+r.URL.Path, http.StatusTemporaryRedirect)
+	}))
+	defer redirector.Close()
+	host := strings.TrimPrefix(redirector.URL, "http://")
+	client, err := NewHTTPClient(HTTPConfig{BaseURL: redirector.URL, AllowedHosts: []string{host}}, redirector.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Submit(context.Background(), SubmitRequest{})
+	if !errors.Is(err, ErrHostNotAllowed) || reachedTarget {
+		t.Fatalf("error = %v, reached target = %v", err, reachedTarget)
+	}
+}
+
 func TestHTTPClientPollsAndCancelsJob(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

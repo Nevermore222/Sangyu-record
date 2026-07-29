@@ -72,6 +72,17 @@ func (r *PostgresRepository) Get(ctx context.Context, id uuid.UUID) (Job, error)
 	return scanJob(r.pool.QueryRow(ctx, selectJob+" WHERE id=$1", id))
 }
 
+func (r *PostgresRepository) FindUnconsumedByWorkflowNode(
+	ctx context.Context,
+	projectID uuid.UUID,
+	runID uuid.UUID,
+	node string,
+) (Job, error) {
+	return scanJob(r.pool.QueryRow(ctx, selectJob+`
+		WHERE project_id=$1 AND workflow_run_id=$2 AND workflow_node_name=$3 AND consumed_at IS NULL`,
+		projectID, runID, node))
+}
+
 func (r *PostgresRepository) getByIdempotencyKey(ctx context.Context, key string) (Job, error) {
 	return scanJob(r.pool.QueryRow(ctx, selectJob+" WHERE idempotency_key=$1", key))
 }
@@ -162,6 +173,40 @@ func (r *PostgresRepository) ConsumeTerminal(ctx context.Context, id uuid.UUID) 
 	}
 	outcome.State, outcome.Output = providers.State(state), output
 	return outcome, true, nil
+}
+
+func (r *PostgresRepository) PeekTerminal(ctx context.Context, id uuid.UUID) (Outcome, bool, error) {
+	var outcome Outcome
+	var state string
+	var output []byte
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, project_id, workflow_run_id, workflow_node_name, state,
+		       coalesce(normalized_output,'null'::jsonb), coalesce(error_code,'')
+		FROM provider_jobs
+		WHERE id=$1 AND consumed_at IS NULL
+		  AND state IN ('succeeded','permanently_failed','timed_out','cancelled')`, id,
+	).Scan(&outcome.JobID, &outcome.ProjectID, &outcome.WorkflowRunID, &outcome.WorkflowNode, &state, &output, &outcome.ErrorCode)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Outcome{}, false, nil
+	}
+	if err != nil {
+		return Outcome{}, false, err
+	}
+	outcome.State, outcome.Output = providers.State(state), output
+	return outcome, true, nil
+}
+
+func (r *PostgresRepository) MarkConsumed(ctx context.Context, id uuid.UUID) error {
+	result, err := r.pool.Exec(ctx, `
+		UPDATE provider_jobs SET consumed_at=coalesce(consumed_at, now()), updated_at=now()
+		WHERE id=$1 AND state IN ('succeeded','permanently_failed','timed_out','cancelled')`, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrTerminalConflict
+	}
+	return nil
 }
 
 const selectJob = `SELECT id, request_id, project_id, workflow_run_id, workflow_node_name,

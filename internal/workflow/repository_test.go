@@ -77,6 +77,10 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	if next == nil || next.Node != NodeUnderstandPhoto {
 		t.Fatalf("next = %#v", next)
 	}
+	next, err = repo.SucceedNode(ctx, payload, json.RawMessage(`{"ok":true}`))
+	if err != nil || next == nil || next.Node != NodeUnderstandPhoto {
+		t.Fatalf("idempotent next = %#v, err = %v", next, err)
+	}
 	claimed, err = repo.ClaimNode(ctx, payload)
 	if err != nil || claimed {
 		t.Fatalf("duplicate claimed = %v, err = %v", claimed, err)
