@@ -99,10 +99,10 @@ services:
       chromium:
         condition: service_started
 
-  mock-skill-runner:
+  mock-provider:
     build:
       context: ../..
-      dockerfile: skills/mock-memoir/Dockerfile
+      dockerfile: providers/mock/Dockerfile
     ports:
       - "8090:8090"
     read_only: true

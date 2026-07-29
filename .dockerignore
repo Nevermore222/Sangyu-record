@@ -3,5 +3,5 @@
 bin
 miniapp/node_modules
 miniapp/miniprogram_npm
-skills/mock-memoir/node_modules
+providers/mock/node_modules
 *.log

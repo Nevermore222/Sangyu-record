@@ -1,4 +1,4 @@
-.PHONY: test vet infra-up infra-down migrate miniapp-test skill-test smoke
+.PHONY: test vet infra-up infra-down migrate miniapp-test provider-test smoke
 
 test:
 	go test ./...
@@ -19,8 +19,8 @@ miniapp-test:
 	npm --prefix miniapp test
 	npm --prefix miniapp run typecheck
 
-skill-test:
-	npm --prefix skills/mock-memoir test
+provider-test:
+	npm --prefix providers/mock test
 
 smoke:
 	powershell -ExecutionPolicy Bypass -File scripts/vertical-slice.ps1

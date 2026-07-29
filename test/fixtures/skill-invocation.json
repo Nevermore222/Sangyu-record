@@ -1,8 +1,0 @@
-{
-  "invocation_id": "fixture-invocation-1",
-  "contract_version": "1.0",
-  "skill": { "name": "mock-memoir", "version": "0.1.0" },
-  "input": { "project_id": "fixture-project-1" },
-  "allowed_resources": ["asset-1"],
-  "deadline": "2026-07-28T10:00:00Z"
-}
