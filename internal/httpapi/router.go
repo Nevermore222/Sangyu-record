@@ -7,7 +7,8 @@ import (
 )
 
 type Dependencies struct {
-	RegisterStaffRoutes func(chi.Router)
+	RegisterStaffRoutes    func(chi.Router)
+	RegisterProviderRoutes func(chi.Router)
 }
 
 func NewRouter(deps Dependencies) http.Handler {
@@ -17,6 +18,9 @@ func NewRouter(deps Dependencies) http.Handler {
 	})
 	if deps.RegisterStaffRoutes != nil {
 		router.Route("/v1/staff", deps.RegisterStaffRoutes)
+	}
+	if deps.RegisterProviderRoutes != nil {
+		deps.RegisterProviderRoutes(router)
 	}
 	return router
 }

@@ -75,7 +75,8 @@ type Repository interface {
 	CreateOrGet(context.Context, CreateInput) (Job, bool, error)
 	MarkSubmitted(context.Context, uuid.UUID, providers.JobRef) error
 	Get(context.Context, uuid.UUID) (Job, error)
-	AddAttempt(context.Context, Attempt) error
+	StartAttempt(context.Context, uuid.UUID, string, providers.State) (Attempt, error)
+	FinishAttempt(context.Context, Attempt) error
 	ApplySnapshot(context.Context, uuid.UUID, providers.Snapshot, string) error
 	ConsumeTerminal(context.Context, uuid.UUID) (Outcome, bool, error)
 }

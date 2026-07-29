@@ -72,20 +72,39 @@ func (r *PostgresRepository) getByIdempotencyKey(ctx context.Context, key string
 	return scanJob(r.pool.QueryRow(ctx, selectJob+" WHERE idempotency_key=$1", key))
 }
 
-func (r *PostgresRepository) AddAttempt(ctx context.Context, attempt Attempt) error {
-	if attempt.ID == uuid.Nil {
-		attempt.ID = uuid.New()
+func (r *PostgresRepository) StartAttempt(ctx context.Context, jobID uuid.UUID, operation string, state providers.State) (Attempt, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Attempt{}, err
 	}
-	if attempt.CreatedAt.IsZero() {
-		attempt.CreatedAt = time.Now().UTC()
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := tx.QueryRow(ctx, "SELECT id FROM provider_jobs WHERE id=$1 FOR UPDATE", jobID).Scan(&jobID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Attempt{}, ErrNotFound
+		}
+		return Attempt{}, err
 	}
+	attempt := Attempt{ID: uuid.New(), ProviderJobID: jobID, Operation: operation, State: state, CreatedAt: time.Now().UTC()}
+	if err := tx.QueryRow(ctx, "SELECT coalesce(max(attempt),0)+1 FROM provider_attempts WHERE provider_job_id=$1", jobID).Scan(&attempt.Attempt); err != nil {
+		return Attempt{}, err
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO provider_attempts (id, provider_job_id, attempt, operation, state, elapsed_ms, created_at)
+		VALUES ($1,$2,$3,$4,$5,0,$6)`, attempt.ID, attempt.ProviderJobID, attempt.Attempt, attempt.Operation, attempt.State, attempt.CreatedAt)
+	if err != nil {
+		return Attempt{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Attempt{}, err
+	}
+	return attempt, nil
+}
+
+func (r *PostgresRepository) FinishAttempt(ctx context.Context, attempt Attempt) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO provider_attempts (
-			id, provider_job_id, attempt, operation, state, http_status,
-			raw_response_object_key, error_code, elapsed_ms, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,NULLIF($7,''),NULLIF($8,''),$9,$10)`,
-		attempt.ID, attempt.ProviderJobID, attempt.Attempt, attempt.Operation, attempt.State,
-		attempt.HTTPStatus, attempt.RawResponseObjectKey, attempt.ErrorCode, attempt.ElapsedMS, attempt.CreatedAt)
+		UPDATE provider_attempts SET state=$2, http_status=NULLIF($3,0),
+			raw_response_object_key=NULLIF($4,''), error_code=NULLIF($5,''), elapsed_ms=$6
+		WHERE id=$1`, attempt.ID, attempt.State, attempt.HTTPStatus, attempt.RawResponseObjectKey, attempt.ErrorCode, attempt.ElapsedMS)
 	return err
 }
 
