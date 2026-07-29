@@ -59,6 +59,20 @@ func (r *memoryJobsRepository) FindUnconsumedByWorkflowNode(
 	return Job{}, ErrNotFound
 }
 
+func (r *memoryJobsRepository) ListUnconsumedDue(_ context.Context, before time.Time, limit int) ([]Job, error) {
+	jobs := make([]Job, 0)
+	for id, job := range r.jobs {
+		if r.consumed[id] || job.UpdatedAt.After(before) {
+			continue
+		}
+		jobs = append(jobs, job)
+		if limit > 0 && len(jobs) == limit {
+			break
+		}
+	}
+	return jobs, nil
+}
+
 func (r *memoryJobsRepository) StartAttempt(_ context.Context, id uuid.UUID, operation string, state providers.State) (Attempt, error) {
 	r.attemptSeq[id]++
 	return Attempt{ID: uuid.New(), ProviderJobID: id, Attempt: r.attemptSeq[id], Operation: operation, State: state}, nil
@@ -143,6 +157,24 @@ func TestSubmitUsesPersistedIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestSubmitRejectsTerminalProviderResponse(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{
+		ProviderJobID: "external-1",
+		State:         providers.StateSucceeded,
+		Raw:           json.RawMessage(`{"provider_job_id":"external-1","state":"succeeded"}`),
+	}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.State != providers.StatePermanentlyFailed || job.ErrorCode != "invalid_provider_response" {
+		t.Fatalf("job = %#v", job)
+	}
+}
+
 func TestDuplicateTerminalCallbackIsConsumedOnce(t *testing.T) {
 	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted}}
 	repo := newMemoryJobsRepository()
@@ -172,6 +204,47 @@ func TestDuplicateTerminalCallbackIsConsumedOnce(t *testing.T) {
 	_, ok, err = service.ConsumeTerminal(context.Background(), job.ID)
 	if err != nil || ok {
 		t.Fatalf("second consume = %v, %v", ok, err)
+	}
+}
+
+func TestDuplicateProcessingCallbackDoesNotCreateAnotherAttempt(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := providers.Snapshot{
+		RequestID: job.RequestID.String(), ProviderJobID: "external-1", State: providers.StateProcessing,
+	}
+	if err := service.ApplyCallback(context.Background(), job.ID, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ApplyCallback(context.Background(), job.ID, snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if repo.attemptSeq[job.ID] != 2 {
+		t.Fatalf("attempts after duplicate callback = %d, want submit plus one callback", repo.attemptSeq[job.ID])
+	}
+}
+
+func TestCallbackRejectsFailureWithoutErrorCode(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = service.ApplyCallback(context.Background(), job.ID, providers.Snapshot{
+		RequestID: job.RequestID.String(), ProviderJobID: "external-1", State: providers.StatePermanentlyFailed,
+	})
+	if err == nil {
+		t.Fatal("callback failure without error code was accepted")
+	}
+	if repo.attemptSeq[job.ID] != 1 {
+		t.Fatalf("invalid callback created an attempt: %d", repo.attemptSeq[job.ID])
 	}
 }
 

@@ -120,10 +120,15 @@ type memoryProviderJobs struct {
 	outcome    providerjobs.Outcome
 	consumable bool
 	markCalls  int
+	dueJobs    []providerjobs.Job
 }
 
 func (j *memoryProviderJobs) Refresh(_ context.Context, _ uuid.UUID) (providerjobs.Job, error) {
 	return j.job, nil
+}
+
+func (j *memoryProviderJobs) ListUnconsumedDue(_ context.Context, _ time.Time, _ int) ([]providerjobs.Job, error) {
+	return j.dueJobs, nil
 }
 
 func (j *memoryProviderJobs) FindUnconsumedByWorkflowNode(_ context.Context, _, _ uuid.UUID, _ string) (providerjobs.Job, error) {
@@ -180,6 +185,19 @@ func TestRetryOfRunningProviderNodeQueuesPoll(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(queue.providerPolls) != 1 || queue.providerPolls[0].JobID != jobs.job.ID {
+		t.Fatalf("provider polls = %#v", queue.providerPolls)
+	}
+}
+
+func TestReconcileProviderJobsRequeuesDurableJobs(t *testing.T) {
+	jobs := &memoryProviderJobs{dueJobs: []providerjobs.Job{{ID: uuid.New()}, {ID: uuid.New()}}}
+	queue := &memoryQueue{}
+	worker := NewWorker(newMemoryNodeRepository(), nil, queue, jobs, time.Second)
+
+	if err := worker.ReconcileProviderJobs(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if len(queue.providerPolls) != 2 || queue.providerPolls[0].JobID != jobs.dueJobs[0].ID || queue.providerPolls[1].JobID != jobs.dueJobs[1].ID {
 		t.Fatalf("provider polls = %#v", queue.providerPolls)
 	}
 }

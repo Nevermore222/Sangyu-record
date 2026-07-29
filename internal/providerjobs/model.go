@@ -76,6 +76,7 @@ type Repository interface {
 	MarkSubmitted(context.Context, uuid.UUID, providers.JobRef) error
 	Get(context.Context, uuid.UUID) (Job, error)
 	FindUnconsumedByWorkflowNode(context.Context, uuid.UUID, uuid.UUID, string) (Job, error)
+	ListUnconsumedDue(context.Context, time.Time, int) ([]Job, error)
 	StartAttempt(context.Context, uuid.UUID, string, providers.State) (Attempt, error)
 	FinishAttempt(context.Context, Attempt) error
 	ApplySnapshot(context.Context, uuid.UUID, providers.Snapshot, string) error

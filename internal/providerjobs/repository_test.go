@@ -70,12 +70,29 @@ func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
 			t.Fatalf("peek %d = %v, %v", attempt, available, err)
 		}
 	}
+	due, err := repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), 100)
+	if err != nil || !containsJob(due, job.ID) {
+		t.Fatalf("due before acknowledgement = %#v, %v", due, err)
+	}
 	if err := repo.MarkConsumed(context.Background(), job.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, available, err := repo.PeekTerminal(context.Background(), job.ID); err != nil || available {
 		t.Fatalf("peek after acknowledgement = %v, %v", available, err)
 	}
+	due, err = repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), 100)
+	if err != nil || containsJob(due, job.ID) {
+		t.Fatalf("due after acknowledgement = %#v, %v", due, err)
+	}
+}
+
+func containsJob(jobs []Job, id uuid.UUID) bool {
+	for _, job := range jobs {
+		if job.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCreateOrGetUsesIdempotencyKey(t *testing.T) {

@@ -83,6 +83,30 @@ func (r *PostgresRepository) FindUnconsumedByWorkflowNode(
 		projectID, runID, node))
 }
 
+func (r *PostgresRepository) ListUnconsumedDue(ctx context.Context, before time.Time, limit int) ([]Job, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := r.pool.Query(ctx, selectJob+`
+		WHERE consumed_at IS NULL AND updated_at <= $1
+		ORDER BY updated_at, id
+		LIMIT $2`, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := make([]Job, 0)
+	for rows.Next() {
+		job, err := scanJob(rows)
+		if err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs, rows.Err()
+}
+
 func (r *PostgresRepository) getByIdempotencyKey(ctx context.Context, key string) (Job, error) {
 	return scanJob(r.pool.QueryRow(ctx, selectJob+" WHERE idempotency_key=$1", key))
 }

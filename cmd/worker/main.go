@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -75,9 +76,32 @@ func main() {
 	mux := asynq.NewServeMux()
 	mux.Handle(workflow.TaskWorkflowNode, workflow.NewAsynqHandler(worker))
 	mux.Handle(workflow.TaskProviderPoll, workflow.NewProviderPollAsynqHandler(worker))
+	reconcileCtx, stopReconciler := context.WithCancel(context.Background())
+	defer stopReconciler()
+	go runProviderReconciler(reconcileCtx, worker, 30*time.Second)
 	log.Print("workflow worker started")
 	if err := server.Run(mux); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func runProviderReconciler(ctx context.Context, worker *workflow.Worker, interval time.Duration) {
+	reconcile := func(before time.Time) {
+		if err := worker.ReconcileProviderJobs(ctx, before); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("reconcile provider jobs: %v", err)
+		}
+	}
+	reconcile(time.Now())
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-ticker.C:
+			reconcile(now.Add(-interval))
+		}
 	}
 }
 
