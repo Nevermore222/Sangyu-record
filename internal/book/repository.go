@@ -34,14 +34,8 @@ func (r *PostgresRepository) LoadManuscript(ctx context.Context, runID uuid.UUID
 	if err != nil {
 		return Manuscript{}, err
 	}
-	var wrapper struct {
-		Output json.RawMessage `json:"output"`
-	}
-	if err := json.Unmarshal(encoded, &wrapper); err != nil {
-		return Manuscript{}, err
-	}
 	var manuscript Manuscript
-	if err := json.Unmarshal(wrapper.Output, &manuscript); err != nil {
+	if err := json.Unmarshal(encoded, &manuscript); err != nil {
 		return Manuscript{}, err
 	}
 	return manuscript, nil

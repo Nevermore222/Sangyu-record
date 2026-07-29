@@ -29,12 +29,12 @@ func TestWorkflowProcessorRendersStoredManuscript(t *testing.T) {
 	}}, renderer)
 	payload := workflow.NodePayload{RunID: uuid.New(), ProjectID: uuid.New(), Node: workflow.NodeRenderPDF}
 
-	output, err := processor.Process(context.Background(), payload)
+	result, err := processor.Process(context.Background(), payload)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var artifact Artifact
-	if err := json.Unmarshal(output, &artifact); err != nil {
+	if err := json.Unmarshal(result.Output, &artifact); err != nil {
 		t.Fatal(err)
 	}
 	if artifact.Kind != "pdf" || artifact.SizeBytes == 0 {

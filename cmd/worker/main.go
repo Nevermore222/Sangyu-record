@@ -49,7 +49,7 @@ func main() {
 	renderer := book.NewService(book.NewChromiumEngine(cfg.ChromiumURL), artifactStore, bookRepo, cfg.S3Bucket)
 	processors := workflow.DeterministicProcessors()
 	processors[workflow.NodeRenderPDF] = book.NewWorkflowProcessor(bookRepo, renderer)
-	worker := workflow.NewWorker(repo, processors, queue)
+	worker := workflow.NewWorker(repo, processors, queue, nil, 2*time.Second)
 	mux := asynq.NewServeMux()
 	mux.Handle(workflow.TaskWorkflowNode, workflow.NewAsynqHandler(worker))
 	log.Print("workflow worker started")

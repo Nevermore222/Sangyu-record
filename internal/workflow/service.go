@@ -25,7 +25,7 @@ func (s *Service) Start(ctx context.Context, projectID uuid.UUID) (Run, error) {
 	if err != nil {
 		return Run{}, err
 	}
-	err = s.queue.Enqueue(ctx, NodePayload{RunID: run.ID, ProjectID: projectID, Node: NodeTranscribe})
+	err = s.queue.EnqueueNode(ctx, NodePayload{RunID: run.ID, ProjectID: projectID, Node: NodeTranscribe})
 	return run, err
 }
 

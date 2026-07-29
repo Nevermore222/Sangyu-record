@@ -21,14 +21,15 @@ func NewWorkflowProcessor(repo ManuscriptRepository, renderer *Service) *Workflo
 	return &WorkflowProcessor{repo: repo, renderer: renderer}
 }
 
-func (p *WorkflowProcessor) Process(ctx context.Context, payload workflow.NodePayload) (json.RawMessage, error) {
+func (p *WorkflowProcessor) Process(ctx context.Context, payload workflow.NodePayload) (workflow.ProcessResult, error) {
 	manuscript, err := p.repo.LoadManuscript(ctx, payload.RunID)
 	if err != nil {
-		return nil, err
+		return workflow.ProcessResult{}, err
 	}
 	artifact, err := p.renderer.Render(ctx, payload.ProjectID, payload.RunID, manuscript)
 	if err != nil {
-		return nil, err
+		return workflow.ProcessResult{}, err
 	}
-	return json.Marshal(artifact)
+	encoded, err := json.Marshal(artifact)
+	return workflow.Completed(encoded), err
 }

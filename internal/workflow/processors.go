@@ -9,7 +9,7 @@ type DeterministicProcessor struct {
 	Node NodeName
 }
 
-func (p DeterministicProcessor) Process(_ context.Context, payload NodePayload) (json.RawMessage, error) {
+func (p DeterministicProcessor) Process(_ context.Context, _ NodePayload) (ProcessResult, error) {
 	var output any
 	switch p.Node {
 	case NodeTranscribe:
@@ -30,12 +30,12 @@ func (p DeterministicProcessor) Process(_ context.Context, payload NodePayload) 
 			}}}},
 		}
 	case NodeRenderPDF:
-		return nil, ErrRendererUnavailable
+		return ProcessResult{}, ErrRendererUnavailable
 	default:
-		return nil, ErrProcessorMissing
+		return ProcessResult{}, ErrProcessorMissing
 	}
-	encoded, err := json.Marshal(map[string]any{"project_id": payload.ProjectID, "output": output})
-	return encoded, err
+	encoded, err := json.Marshal(output)
+	return Completed(encoded), err
 }
 
 func DeterministicProcessors() map[NodeName]Processor {

@@ -34,7 +34,7 @@ func TestStartPersistsBeforeEnqueueingFirstNode(t *testing.T) {
 	if run.ID == uuid.Nil {
 		t.Fatal("run was not persisted")
 	}
-	if len(queue.payloads) != 1 || queue.payloads[0].Node != NodeTranscribe || queue.payloads[0].RunID != run.ID {
-		t.Fatalf("queued = %#v", queue.payloads)
+	if len(queue.nodePayloads) != 1 || queue.nodePayloads[0].Node != NodeTranscribe || queue.nodePayloads[0].RunID != run.ID {
+		t.Fatalf("queued = %#v", queue.nodePayloads)
 	}
 }
