@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sangyu-record.local/contracts/providers/v1/callback.schema.json",
+  "$ref": "./snapshot.schema.json"
+}

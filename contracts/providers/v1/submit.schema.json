@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sangyu-record.local/contracts/providers/v1/submit.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "idempotency_key", "contract_version", "task_type", "input_schema_version", "output_schema_version", "input", "resource_urls", "callback_url", "deadline"],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "contract_version": { "const": "1.0" },
+    "task_type": {
+      "enum": ["audio_transcription", "speaker_diarization", "photo_ocr", "photo_understanding", "collection_plan", "material_assessment", "followup_plan", "memoir_positioning", "timeline_builder", "chapter_planner", "chapter_writer", "chapter_review", "book_consistency_review", "shared_memory_retrieval"]
+    },
+    "input_schema_version": { "type": "string", "minLength": 1 },
+    "output_schema_version": { "type": "string", "minLength": 1 },
+    "input": { "type": "object" },
+    "resource_urls": { "type": "array", "items": { "type": "string", "format": "uri" }, "uniqueItems": true },
+    "callback_url": { "type": "string", "format": "uri" },
+    "deadline": { "type": "string", "format": "date-time" }
+  }
+}

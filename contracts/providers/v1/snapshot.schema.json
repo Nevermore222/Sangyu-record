@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sangyu-record.local/contracts/providers/v1/snapshot.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "provider_job_id", "state"],
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "provider_job_id": { "type": "string", "minLength": 1 },
+    "state": { "enum": ["pending_submission", "submitted", "processing", "succeeded", "retryable_failed", "permanently_failed", "timed_out", "cancelled"] },
+    "output": { "type": "object" },
+    "error_code": { "type": "string" },
+    "error_message": { "type": "string" }
+  }
+}

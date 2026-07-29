@@ -1,0 +1,10 @@
+{
+  "request_id": "11111111-1111-1111-1111-111111111111",
+  "provider_job_id": "mock-job-1",
+  "state": "succeeded",
+  "output": {
+    "segments": [
+      { "start_seconds": 0, "end_seconds": 4, "text": "我小时候住在苏州。", "source_ref": "audio-1#0-4" }
+    ]
+  }
+}
