@@ -36,3 +36,7 @@ func (s *MinioObjectStore) Stat(ctx context.Context, bucket, key string) (Object
 	}
 	return ObjectInfo{Size: info.Size, ContentType: info.ContentType}, nil
 }
+
+func (s *MinioObjectStore) Remove(ctx context.Context, bucket, key string) error {
+	return s.client.RemoveObject(ctx, bucket, key, minio.RemoveObjectOptions{})
+}

@@ -20,6 +20,7 @@ import (
 	"github.com/nevermore222/sangyu-record/internal/providerjobs"
 	"github.com/nevermore222/sangyu-record/internal/providers"
 	"github.com/nevermore222/sangyu-record/internal/staff"
+	"github.com/nevermore222/sangyu-record/internal/visits"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
@@ -64,6 +65,9 @@ func main() {
 	projectRepo := projects.NewPostgresRepository(pool)
 	projectService := projects.NewServiceWithConfig(projectRepo, projects.DeterministicPlanner{}, cfg.AuthMode == "dev")
 	projectHandler := projects.NewHandler(projectService)
+	visitRepo := visits.NewPostgresRepository(pool)
+	visitService := visits.NewService(visitRepo, projectRepo, cfg.AuthMode == "dev")
+	visitHandler := visits.NewHandler(visitService)
 	objectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
 		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
 	})
@@ -77,8 +81,13 @@ func main() {
 		log.Fatal(err)
 	}
 	assetRepo := assets.NewPostgresRepository(pool)
-	assetService := assets.NewService(assetRepo, assets.NewMinioObjectStore(objectClient, publicObjectClient), cfg.S3Bucket)
-	assetHandler := assets.NewHandler(assetService)
+	assetService := assets.NewServiceWithConfig(
+		assetRepo,
+		assets.NewMinioObjectStore(objectClient, publicObjectClient),
+		cfg.S3Bucket,
+		cfg.AuthMode == "wechat",
+	)
+	assetHandler := assets.NewHandler(assetService, visitService)
 	asynqClient, err := platform.NewAsynqClient(cfg.RedisURL)
 	if err != nil {
 		log.Fatal(err)
@@ -116,6 +125,7 @@ func main() {
 			RegisterStaffRoutes: func(router chi.Router) {
 				staffHandler.RegisterStaff(router)
 				projectHandler.Register(router)
+				visitHandler.Register(router)
 				assetHandler.Register(router)
 				workflowHandler.Register(router)
 				bookHandler.Register(router)
