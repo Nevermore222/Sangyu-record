@@ -62,7 +62,7 @@ func main() {
 	staffMiddleware := staff.NewMiddleware(staffService)
 
 	projectRepo := projects.NewPostgresRepository(pool)
-	projectService := projects.NewService(projectRepo, projects.DeterministicPlanner{})
+	projectService := projects.NewServiceWithConfig(projectRepo, projects.DeterministicPlanner{}, cfg.AuthMode == "dev")
 	projectHandler := projects.NewHandler(projectService)
 	objectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
 		Endpoint: cfg.S3Endpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,

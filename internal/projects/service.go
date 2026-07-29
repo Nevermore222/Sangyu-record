@@ -12,6 +12,11 @@ import (
 type Repository interface {
 	Create(context.Context, ProjectDetail) error
 	Get(context.Context, uuid.UUID) (ProjectDetail, error)
+	GetOwned(context.Context, uuid.UUID, uuid.UUID, bool) (ProjectDetail, error)
+	List(context.Context, ListInput) (Page, error)
+	Dashboard(context.Context, uuid.UUID, bool) (Dashboard, error)
+	UpsertConsent(context.Context, Consent) (Consent, error)
+	HasConsent(context.Context, uuid.UUID) (bool, error)
 }
 
 type Planner interface {
@@ -40,12 +45,17 @@ func (DeterministicPlanner) BuildInitialPlan(input CreateInput) []PlanItem {
 }
 
 type Service struct {
-	repo    Repository
-	planner Planner
+	repo         Repository
+	planner      Planner
+	allowUnowned bool
 }
 
 func NewService(repo Repository, planner Planner) *Service {
 	return &Service{repo: repo, planner: planner}
+}
+
+func NewServiceWithConfig(repo Repository, planner Planner, allowUnowned bool) *Service {
+	return &Service{repo: repo, planner: planner, allowUnowned: allowUnowned}
 }
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (ProjectDetail, error) {
@@ -57,6 +67,7 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (ProjectDetail,
 	projectID := uuid.New()
 	detail := ProjectDetail{Project: Project{
 		ID:                projectID,
+		OwnerStaffID:      input.OwnerStaffID,
 		DisplayName:       strings.TrimSpace(input.DisplayName),
 		BirthYear:         input.BirthYear,
 		BirthPlace:        strings.TrimSpace(input.BirthPlace),
@@ -85,6 +96,60 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (ProjectDetail,
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (ProjectDetail, error) {
 	return s.repo.Get(ctx, id)
+}
+
+func (s *Service) GetOwned(ctx context.Context, id, ownerStaffID uuid.UUID) (ProjectDetail, error) {
+	return s.repo.GetOwned(ctx, id, ownerStaffID, s.allowUnowned)
+}
+
+func (s *Service) List(ctx context.Context, input ListInput) (Page, error) {
+	if input.OwnerStaffID == uuid.Nil {
+		return Page{}, fmt.Errorf("%w: owner staff ID is required", ErrValidation)
+	}
+	if input.Limit <= 0 {
+		input.Limit = 20
+	} else if input.Limit > 50 {
+		input.Limit = 50
+	}
+	input.Query = strings.TrimSpace(input.Query)
+	if input.State != "" && !validState(input.State) {
+		return Page{}, fmt.Errorf("%w: unknown project state", ErrValidation)
+	}
+	input.IncludeUnowned = s.allowUnowned
+	return s.repo.List(ctx, input)
+}
+
+func (s *Service) Dashboard(ctx context.Context, ownerStaffID uuid.UUID) (Dashboard, error) {
+	if ownerStaffID == uuid.Nil {
+		return Dashboard{}, fmt.Errorf("%w: owner staff ID is required", ErrValidation)
+	}
+	return s.repo.Dashboard(ctx, ownerStaffID, s.allowUnowned)
+}
+
+func (s *Service) ConfirmConsent(ctx context.Context, projectID, staffID uuid.UUID, input ConfirmConsentInput) (Consent, error) {
+	if projectID == uuid.Nil || staffID == uuid.Nil {
+		return Consent{}, fmt.Errorf("%w: project and staff IDs are required", ErrValidation)
+	}
+	if input.ConfirmedBy != "elder" && input.ConfirmedBy != "guardian" {
+		return Consent{}, fmt.Errorf("%w: confirmed_by must be elder or guardian", ErrValidation)
+	}
+	if _, err := s.repo.GetOwned(ctx, projectID, staffID, s.allowUnowned); err != nil {
+		return Consent{}, err
+	}
+	return s.repo.UpsertConsent(ctx, Consent{
+		ID: uuid.New(), ProjectID: projectID, ConfirmedBy: input.ConfirmedBy,
+		ConfirmationMethod: "onsite", StaffID: staffID, ConfirmedAt: time.Now().UTC(),
+	})
+}
+
+func validState(state State) bool {
+	switch state {
+	case StateCollecting, StateProcessing, StateNeedsMaterial, StateGenerating,
+		StateQualityCheck, StateException, StatePDFRendering, StateCompleted:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateCreateInput(input CreateInput) error {
