@@ -70,7 +70,7 @@ func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
 			t.Fatalf("peek %d = %v, %v", attempt, available, err)
 		}
 	}
-	due, err := repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), DueCursor{}, 100)
+	due, err := repo.LeaseUnconsumedDue(context.Background(), time.Now().Add(time.Second), time.Now().Add(-time.Second), 100)
 	if err != nil || !containsJob(due, job.ID) {
 		t.Fatalf("due before acknowledgement = %#v, %v", due, err)
 	}
@@ -80,9 +80,34 @@ func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
 	if _, available, err := repo.PeekTerminal(context.Background(), job.ID); err != nil || available {
 		t.Fatalf("peek after acknowledgement = %v, %v", available, err)
 	}
-	due, err = repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), DueCursor{}, 100)
+	due, err = repo.LeaseUnconsumedDue(context.Background(), time.Now().Add(time.Second), time.Now().Add(-time.Second), 100)
 	if err != nil || containsJob(due, job.ID) {
 		t.Fatalf("due after acknowledgement = %#v, %v", due, err)
+	}
+}
+
+func TestReconcileLeasePreventsDuplicateClaims(t *testing.T) {
+	pool := openProviderJobsTestPool(t)
+	projectID, runID := insertProviderJobParents(t, pool)
+	repo := NewPostgresRepository(pool)
+	job, _, err := repo.CreateOrGet(context.Background(), CreateInput{
+		RequestID: uuid.New(), ProjectID: projectID, WorkflowRunID: runID,
+		WorkflowNode: "transcribe", ProviderKind: providers.KindMedia,
+		TaskType: providers.TaskAudioTranscription, IdempotencyKey: runID.String() + ":transcribe",
+		Input: json.RawMessage(`{}`), Deadline: time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := time.Now().Add(time.Second)
+	leaseUntil := time.Now().Add(5 * time.Minute)
+	first, err := repo.LeaseUnconsumedDue(context.Background(), before, leaseUntil, 100)
+	if err != nil || !containsJob(first, job.ID) {
+		t.Fatalf("first lease = %#v, %v", first, err)
+	}
+	second, err := repo.LeaseUnconsumedDue(context.Background(), before, leaseUntil, 100)
+	if err != nil || containsJob(second, job.ID) {
+		t.Fatalf("second lease = %#v, %v", second, err)
 	}
 }
 

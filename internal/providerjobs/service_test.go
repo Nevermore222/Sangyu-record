@@ -3,7 +3,6 @@ package providerjobs
 import (
 	"context"
 	"encoding/json"
-	"sort"
 	"testing"
 	"time"
 
@@ -60,21 +59,14 @@ func (r *memoryJobsRepository) FindUnconsumedByWorkflowNode(
 	return Job{}, ErrNotFound
 }
 
-func (r *memoryJobsRepository) ListUnconsumedDue(_ context.Context, before time.Time, cursor DueCursor, limit int) ([]Job, error) {
+func (r *memoryJobsRepository) LeaseUnconsumedDue(_ context.Context, before, _ time.Time, limit int) ([]Job, error) {
 	jobs := make([]Job, 0)
 	for id, job := range r.jobs {
-		if r.consumed[id] || job.UpdatedAt.After(before) || job.UpdatedAt.Before(cursor.UpdatedAt) ||
-			(job.UpdatedAt.Equal(cursor.UpdatedAt) && job.ID.String() <= cursor.ID.String()) {
+		if r.consumed[id] || job.UpdatedAt.After(before) {
 			continue
 		}
 		jobs = append(jobs, job)
 	}
-	sort.Slice(jobs, func(i, j int) bool {
-		if jobs[i].UpdatedAt.Equal(jobs[j].UpdatedAt) {
-			return jobs[i].ID.String() < jobs[j].ID.String()
-		}
-		return jobs[i].UpdatedAt.Before(jobs[j].UpdatedAt)
-	})
 	if limit > 0 && len(jobs) > limit {
 		jobs = jobs[:limit]
 	}

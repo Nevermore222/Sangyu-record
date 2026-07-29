@@ -25,7 +25,7 @@ type Enqueuer interface {
 type ProviderJobs interface {
 	Refresh(context.Context, uuid.UUID) (providerjobs.Job, error)
 	FindUnconsumedByWorkflowNode(context.Context, uuid.UUID, uuid.UUID, string) (providerjobs.Job, error)
-	ListUnconsumedDue(context.Context, time.Time, providerjobs.DueCursor, int) ([]providerjobs.Job, error)
+	LeaseUnconsumedDue(context.Context, time.Time, time.Time, int) ([]providerjobs.Job, error)
 	PeekTerminal(context.Context, uuid.UUID) (providerjobs.Outcome, bool, error)
 	MarkConsumed(context.Context, uuid.UUID) error
 }
@@ -34,9 +34,9 @@ func (w *Worker) ReconcileProviderJobs(ctx context.Context, before time.Time) er
 	if w.jobs == nil || w.queue == nil {
 		return nil
 	}
-	cursor := providerjobs.DueCursor{}
+	leaseUntil := time.Now().UTC().Add(5 * time.Minute)
 	for {
-		jobs, err := w.jobs.ListUnconsumedDue(ctx, before, cursor, 100)
+		jobs, err := w.jobs.LeaseUnconsumedDue(ctx, before, leaseUntil, 100)
 		if err != nil {
 			return err
 		}
@@ -48,8 +48,6 @@ func (w *Worker) ReconcileProviderJobs(ctx context.Context, before time.Time) er
 		if len(jobs) < 100 {
 			return nil
 		}
-		last := jobs[len(jobs)-1]
-		cursor = providerjobs.DueCursor{UpdatedAt: last.UpdatedAt, ID: last.ID}
 	}
 }
 

@@ -295,8 +295,8 @@ func (s *Service) FindUnconsumedByWorkflowNode(
 	return s.repo.FindUnconsumedByWorkflowNode(ctx, projectID, runID, node)
 }
 
-func (s *Service) ListUnconsumedDue(ctx context.Context, before time.Time, cursor DueCursor, limit int) ([]Job, error) {
-	return s.repo.ListUnconsumedDue(ctx, before, cursor, limit)
+func (s *Service) LeaseUnconsumedDue(ctx context.Context, before, leaseUntil time.Time, limit int) ([]Job, error) {
+	return s.repo.LeaseUnconsumedDue(ctx, before, leaseUntil, limit)
 }
 
 func (s *Service) PeekTerminal(ctx context.Context, jobID uuid.UUID) (Outcome, bool, error) {

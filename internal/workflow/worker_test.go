@@ -121,30 +121,29 @@ type memoryProviderJobs struct {
 	consumable bool
 	markCalls  int
 	dueJobs    []providerjobs.Job
+	leased     map[uuid.UUID]bool
 }
 
 func (j *memoryProviderJobs) Refresh(_ context.Context, _ uuid.UUID) (providerjobs.Job, error) {
 	return j.job, nil
 }
 
-func (j *memoryProviderJobs) ListUnconsumedDue(_ context.Context, _ time.Time, cursor providerjobs.DueCursor, limit int) ([]providerjobs.Job, error) {
-	start := 0
-	if cursor.ID != uuid.Nil {
-		for index, job := range j.dueJobs {
-			if job.ID == cursor.ID {
-				start = index + 1
-				break
-			}
+func (j *memoryProviderJobs) LeaseUnconsumedDue(_ context.Context, _ time.Time, _ time.Time, limit int) ([]providerjobs.Job, error) {
+	if j.leased == nil {
+		j.leased = make(map[uuid.UUID]bool)
+	}
+	jobs := make([]providerjobs.Job, 0, limit)
+	for _, job := range j.dueJobs {
+		if j.leased[job.ID] {
+			continue
+		}
+		j.leased[job.ID] = true
+		jobs = append(jobs, job)
+		if len(jobs) == limit {
+			break
 		}
 	}
-	if start >= len(j.dueJobs) {
-		return nil, nil
-	}
-	end := start + limit
-	if end > len(j.dueJobs) {
-		end = len(j.dueJobs)
-	}
-	return j.dueJobs[start:end], nil
+	return jobs, nil
 }
 
 func (j *memoryProviderJobs) FindUnconsumedByWorkflowNode(_ context.Context, _, _ uuid.UUID, _ string) (providerjobs.Job, error) {
@@ -214,6 +213,9 @@ func TestReconcileProviderJobsRequeuesDurableJobs(t *testing.T) {
 	queue := &memoryQueue{}
 	worker := NewWorker(newMemoryNodeRepository(), nil, queue, jobs, time.Second)
 
+	if err := worker.ReconcileProviderJobs(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err := worker.ReconcileProviderJobs(context.Background(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
