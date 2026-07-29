@@ -3,6 +3,7 @@ package providerjobs
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"testing"
 	"time"
 
@@ -59,16 +60,23 @@ func (r *memoryJobsRepository) FindUnconsumedByWorkflowNode(
 	return Job{}, ErrNotFound
 }
 
-func (r *memoryJobsRepository) ListUnconsumedDue(_ context.Context, before time.Time, limit int) ([]Job, error) {
+func (r *memoryJobsRepository) ListUnconsumedDue(_ context.Context, before time.Time, cursor DueCursor, limit int) ([]Job, error) {
 	jobs := make([]Job, 0)
 	for id, job := range r.jobs {
-		if r.consumed[id] || job.UpdatedAt.After(before) {
+		if r.consumed[id] || job.UpdatedAt.After(before) || job.UpdatedAt.Before(cursor.UpdatedAt) ||
+			(job.UpdatedAt.Equal(cursor.UpdatedAt) && job.ID.String() <= cursor.ID.String()) {
 			continue
 		}
 		jobs = append(jobs, job)
-		if limit > 0 && len(jobs) == limit {
-			break
+	}
+	sort.Slice(jobs, func(i, j int) bool {
+		if jobs[i].UpdatedAt.Equal(jobs[j].UpdatedAt) {
+			return jobs[i].ID.String() < jobs[j].ID.String()
 		}
+		return jobs[i].UpdatedAt.Before(jobs[j].UpdatedAt)
+	})
+	if limit > 0 && len(jobs) > limit {
+		jobs = jobs[:limit]
 	}
 	return jobs, nil
 }
@@ -124,17 +132,19 @@ func (memoryRawStore) Put(_ context.Context, job Job, attempt int, _ []byte) (st
 type fakeProvider struct {
 	ref         providers.JobRef
 	snapshot    providers.Snapshot
+	submitErr   error
+	statusErr   error
 	submitCalls int
 	statusCalls int
 }
 
 func (p *fakeProvider) Submit(_ context.Context, _ providers.SubmitRequest) (providers.JobRef, error) {
 	p.submitCalls++
-	return p.ref, nil
+	return p.ref, p.submitErr
 }
 func (p *fakeProvider) Status(_ context.Context, _ string) (providers.Snapshot, error) {
 	p.statusCalls++
-	return p.snapshot, nil
+	return p.snapshot, p.statusErr
 }
 func (p *fakeProvider) Cancel(_ context.Context, _ string) error { return nil }
 
@@ -171,6 +181,34 @@ func TestSubmitRejectsTerminalProviderResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	if job.State != providers.StatePermanentlyFailed || job.ErrorCode != "invalid_provider_response" {
+		t.Fatalf("job = %#v", job)
+	}
+}
+
+func TestSubmitRequiresExplicitProviderState(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1"}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.State != providers.StatePermanentlyFailed || job.ErrorCode != "invalid_provider_response" {
+		t.Fatalf("job = %#v", job)
+	}
+}
+
+func TestUnstructuredHTTPFailureRemainsRetryable(t *testing.T) {
+	provider := &fakeProvider{submitErr: &providers.RemoteError{StatusCode: 503, Body: "temporarily unavailable"}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.State != providers.StateRetryableFailed || job.ErrorCode != "provider_http_503" {
 		t.Fatalf("job = %#v", job)
 	}
 }
@@ -245,6 +283,52 @@ func TestCallbackRejectsFailureWithoutErrorCode(t *testing.T) {
 	}
 	if repo.attemptSeq[job.ID] != 1 {
 		t.Fatalf("invalid callback created an attempt: %d", repo.attemptSeq[job.ID])
+	}
+}
+
+func TestCancelledCallbackDoesNotRequireErrorCode(t *testing.T) {
+	provider := &fakeProvider{ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted}}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ApplyCallback(context.Background(), job.ID, providers.Snapshot{
+		RequestID: job.RequestID.String(), ProviderJobID: "external-1", State: providers.StateCancelled,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.Get(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.State != providers.StateCancelled {
+		t.Fatalf("job state = %s", updated.State)
+	}
+}
+
+func TestInvalidStatusSnapshotArchivesRawResponse(t *testing.T) {
+	provider := &fakeProvider{
+		ref: providers.JobRef{ProviderJobID: "external-1", State: providers.StateSubmitted},
+		snapshot: providers.Snapshot{
+			RequestID: "placeholder", ProviderJobID: "external-1", State: providers.State("unknown"),
+			Raw: json.RawMessage(`{"provider_job_id":"external-1","state":"unknown"}`),
+		},
+	}
+	repo := newMemoryJobsRepository()
+	service := NewService(repo, memoryRawStore{}, providers.Registry{Media: provider}, time.Now)
+	job, err := service.Submit(context.Background(), validSubmitInput(providers.KindMedia, providers.TaskAudioTranscription))
+	if err != nil {
+		t.Fatal(err)
+	}
+	provider.snapshot.RequestID = job.RequestID.String()
+	updated, err := service.Refresh(context.Background(), job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.State != providers.StatePermanentlyFailed || updated.ErrorCode != "invalid_provider_response" || updated.RawResponseObjectKey == "" {
+		t.Fatalf("job = %#v", updated)
 	}
 }
 

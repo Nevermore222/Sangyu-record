@@ -127,8 +127,24 @@ func (j *memoryProviderJobs) Refresh(_ context.Context, _ uuid.UUID) (providerjo
 	return j.job, nil
 }
 
-func (j *memoryProviderJobs) ListUnconsumedDue(_ context.Context, _ time.Time, _ int) ([]providerjobs.Job, error) {
-	return j.dueJobs, nil
+func (j *memoryProviderJobs) ListUnconsumedDue(_ context.Context, _ time.Time, cursor providerjobs.DueCursor, limit int) ([]providerjobs.Job, error) {
+	start := 0
+	if cursor.ID != uuid.Nil {
+		for index, job := range j.dueJobs {
+			if job.ID == cursor.ID {
+				start = index + 1
+				break
+			}
+		}
+	}
+	if start >= len(j.dueJobs) {
+		return nil, nil
+	}
+	end := start + limit
+	if end > len(j.dueJobs) {
+		end = len(j.dueJobs)
+	}
+	return j.dueJobs[start:end], nil
 }
 
 func (j *memoryProviderJobs) FindUnconsumedByWorkflowNode(_ context.Context, _, _ uuid.UUID, _ string) (providerjobs.Job, error) {
@@ -190,14 +206,18 @@ func TestRetryOfRunningProviderNodeQueuesPoll(t *testing.T) {
 }
 
 func TestReconcileProviderJobsRequeuesDurableJobs(t *testing.T) {
-	jobs := &memoryProviderJobs{dueJobs: []providerjobs.Job{{ID: uuid.New()}, {ID: uuid.New()}}}
+	dueJobs := make([]providerjobs.Job, 101)
+	for index := range dueJobs {
+		dueJobs[index] = providerjobs.Job{ID: uuid.New(), UpdatedAt: time.Unix(int64(index+1), 0)}
+	}
+	jobs := &memoryProviderJobs{dueJobs: dueJobs}
 	queue := &memoryQueue{}
 	worker := NewWorker(newMemoryNodeRepository(), nil, queue, jobs, time.Second)
 
 	if err := worker.ReconcileProviderJobs(context.Background(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if len(queue.providerPolls) != 2 || queue.providerPolls[0].JobID != jobs.dueJobs[0].ID || queue.providerPolls[1].JobID != jobs.dueJobs[1].ID {
+	if len(queue.providerPolls) != len(dueJobs) || queue.providerPolls[0].JobID != dueJobs[0].ID || queue.providerPolls[100].JobID != dueJobs[100].ID {
 		t.Fatalf("provider polls = %#v", queue.providerPolls)
 	}
 }

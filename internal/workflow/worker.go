@@ -25,7 +25,7 @@ type Enqueuer interface {
 type ProviderJobs interface {
 	Refresh(context.Context, uuid.UUID) (providerjobs.Job, error)
 	FindUnconsumedByWorkflowNode(context.Context, uuid.UUID, uuid.UUID, string) (providerjobs.Job, error)
-	ListUnconsumedDue(context.Context, time.Time, int) ([]providerjobs.Job, error)
+	ListUnconsumedDue(context.Context, time.Time, providerjobs.DueCursor, int) ([]providerjobs.Job, error)
 	PeekTerminal(context.Context, uuid.UUID) (providerjobs.Outcome, bool, error)
 	MarkConsumed(context.Context, uuid.UUID) error
 }
@@ -34,16 +34,23 @@ func (w *Worker) ReconcileProviderJobs(ctx context.Context, before time.Time) er
 	if w.jobs == nil || w.queue == nil {
 		return nil
 	}
-	jobs, err := w.jobs.ListUnconsumedDue(ctx, before, 100)
-	if err != nil {
-		return err
-	}
-	for _, job := range jobs {
-		if err := w.queue.EnqueueProviderPoll(ctx, ProviderPollPayload{JobID: job.ID}, 0); err != nil {
+	cursor := providerjobs.DueCursor{}
+	for {
+		jobs, err := w.jobs.ListUnconsumedDue(ctx, before, cursor, 100)
+		if err != nil {
 			return err
 		}
+		for _, job := range jobs {
+			if err := w.queue.EnqueueProviderPoll(ctx, ProviderPollPayload{JobID: job.ID}, 0); err != nil {
+				return err
+			}
+		}
+		if len(jobs) < 100 {
+			return nil
+		}
+		last := jobs[len(jobs)-1]
+		cursor = providerjobs.DueCursor{UpdatedAt: last.UpdatedAt, ID: last.ID}
 	}
-	return nil
 }
 
 type ProcessResult struct {

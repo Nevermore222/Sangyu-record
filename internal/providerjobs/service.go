@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -100,9 +101,6 @@ func (s *Service) submitRemote(ctx context.Context, job Job) (Job, error) {
 		}
 		return s.repo.Get(ctx, job.ID)
 	}
-	if ref.State == "" {
-		ref.State = providers.StateSubmitted
-	}
 	if len(ref.Raw) > 0 {
 		key, err := s.rawStore.Put(ctx, job, attempt.Attempt, ref.Raw)
 		if err != nil {
@@ -196,6 +194,14 @@ func (s *Service) ApplyCallback(ctx context.Context, jobID uuid.UUID, snapshot p
 }
 
 func (s *Service) applyAttemptSnapshot(ctx context.Context, job Job, attempt Attempt, snapshot providers.Snapshot) (Job, error) {
+	rawKey := ""
+	if len(snapshot.Raw) > 0 {
+		key, err := s.rawStore.Put(ctx, job, attempt.Attempt, snapshot.Raw)
+		if err != nil {
+			return Job{}, err
+		}
+		rawKey, attempt.RawResponseObjectKey = key, key
+	}
 	if err := validateSnapshotIdentity(job, snapshot); err != nil {
 		attempt.State, attempt.ErrorCode = providers.StatePermanentlyFailed, "invalid_provider_identity"
 		if finishErr := s.repo.FinishAttempt(ctx, attempt); finishErr != nil {
@@ -213,18 +219,10 @@ func (s *Service) applyAttemptSnapshot(ctx context.Context, job Job, attempt Att
 			State:         providers.StatePermanentlyFailed,
 			ErrorCode:     "invalid_provider_response",
 			ErrorMessage:  err.Error(),
-		}, ""); applyErr != nil {
+		}, rawKey); applyErr != nil {
 			return Job{}, applyErr
 		}
 		return s.repo.Get(ctx, job.ID)
-	}
-	rawKey := ""
-	if len(snapshot.Raw) > 0 {
-		key, err := s.rawStore.Put(ctx, job, attempt.Attempt, snapshot.Raw)
-		if err != nil {
-			return Job{}, err
-		}
-		rawKey, attempt.RawResponseObjectKey = key, key
 	}
 	if snapshot.State == providers.StateSucceeded {
 		normalized, err := providers.Normalize(job.TaskType, snapshot.Output)
@@ -272,7 +270,9 @@ func validateSnapshotEnvelope(snapshot providers.Snapshot) error {
 	switch snapshot.State {
 	case providers.StateSubmitted, providers.StateProcessing, providers.StateSucceeded:
 		return nil
-	case providers.StateRetryableFailed, providers.StatePermanentlyFailed, providers.StateTimedOut, providers.StateCancelled:
+	case providers.StateCancelled:
+		return nil
+	case providers.StateRetryableFailed, providers.StatePermanentlyFailed, providers.StateTimedOut:
 		if snapshot.ErrorCode == "" {
 			return errors.New("provider failure snapshot error code is required")
 		}
@@ -295,8 +295,8 @@ func (s *Service) FindUnconsumedByWorkflowNode(
 	return s.repo.FindUnconsumedByWorkflowNode(ctx, projectID, runID, node)
 }
 
-func (s *Service) ListUnconsumedDue(ctx context.Context, before time.Time, limit int) ([]Job, error) {
-	return s.repo.ListUnconsumedDue(ctx, before, limit)
+func (s *Service) ListUnconsumedDue(ctx context.Context, before time.Time, cursor DueCursor, limit int) ([]Job, error) {
+	return s.repo.ListUnconsumedDue(ctx, before, cursor, limit)
 }
 
 func (s *Service) PeekTerminal(ctx context.Context, jobID uuid.UUID) (Outcome, bool, error) {
@@ -314,10 +314,14 @@ func (s *Service) Get(ctx context.Context, jobID uuid.UUID) (Job, error) {
 func stateForError(err error) (providers.State, string) {
 	var remote *providers.RemoteError
 	if errors.As(err, &remote) {
-		if remote.StatusCode == http.StatusTooManyRequests || remote.StatusCode >= 500 {
-			return providers.StateRetryableFailed, remote.Code
+		code := remote.Code
+		if code == "" {
+			code = fmt.Sprintf("provider_http_%d", remote.StatusCode)
 		}
-		return providers.StatePermanentlyFailed, remote.Code
+		if remote.StatusCode == http.StatusTooManyRequests || remote.StatusCode >= 500 {
+			return providers.StateRetryableFailed, code
+		}
+		return providers.StatePermanentlyFailed, code
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return providers.StateTimedOut, "provider_deadline_exceeded"

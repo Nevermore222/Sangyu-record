@@ -70,7 +70,7 @@ func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
 			t.Fatalf("peek %d = %v, %v", attempt, available, err)
 		}
 	}
-	due, err := repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), 100)
+	due, err := repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), DueCursor{}, 100)
 	if err != nil || !containsJob(due, job.ID) {
 		t.Fatalf("due before acknowledgement = %#v, %v", due, err)
 	}
@@ -80,7 +80,7 @@ func TestTerminalOutcomeRemainsUntilAcknowledged(t *testing.T) {
 	if _, available, err := repo.PeekTerminal(context.Background(), job.ID); err != nil || available {
 		t.Fatalf("peek after acknowledgement = %v, %v", available, err)
 	}
-	due, err = repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), 100)
+	due, err = repo.ListUnconsumedDue(context.Background(), time.Now().Add(time.Second), DueCursor{}, 100)
 	if err != nil || containsJob(due, job.ID) {
 		t.Fatalf("due after acknowledgement = %#v, %v", due, err)
 	}

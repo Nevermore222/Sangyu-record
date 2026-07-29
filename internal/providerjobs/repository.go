@@ -83,14 +83,15 @@ func (r *PostgresRepository) FindUnconsumedByWorkflowNode(
 		projectID, runID, node))
 }
 
-func (r *PostgresRepository) ListUnconsumedDue(ctx context.Context, before time.Time, limit int) ([]Job, error) {
+func (r *PostgresRepository) ListUnconsumedDue(ctx context.Context, before time.Time, cursor DueCursor, limit int) ([]Job, error) {
 	if limit <= 0 {
 		limit = 100
 	}
 	rows, err := r.pool.Query(ctx, selectJob+`
 		WHERE consumed_at IS NULL AND updated_at <= $1
+		  AND (updated_at, id) > ($2, $3)
 		ORDER BY updated_at, id
-		LIMIT $2`, before, limit)
+		LIMIT $4`, before, cursor.UpdatedAt, cursor.ID, limit)
 	if err != nil {
 		return nil, err
 	}
