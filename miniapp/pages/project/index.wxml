@@ -41,7 +41,7 @@
   </block>
 </view>
 <action-bar wx:if="{{project}}">
-  <button class="secondary" disabled="{{activeWorkflow}}" bindtap="startVisit">开始新走访</button>
+  <button wx:if="{{project.state !== 'completed'}}" class="secondary" disabled="{{activeWorkflow}}" bindtap="startVisit">开始新走访</button>
   <button wx:if="{{artifact && project.state === 'completed'}}" class="primary" bindtap="openResult">查看回忆录</button>
   <button wx:else class="primary" loading="{{finalizing}}" disabled="{{!readyToFinalize || finalizing}}" bindtap="finalize">确认资料齐备并成书</button>
 </action-bar>

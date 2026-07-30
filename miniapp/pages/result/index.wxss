@@ -1,3 +1,11 @@
-.book-mark { width: 420rpx; aspect-ratio: 0.72; margin: 60rpx auto; padding: 64rpx 46rpx; border: 1rpx solid var(--ink); background: #ede8dd; font-family: "Noto Serif CJK SC", "STSong", serif; font-size: 52rpx; box-sizing: border-box; }
-.book-mark view { width: 72rpx; height: 2rpx; margin: 30rpx 0; background: var(--accent); }
-.book-sub { font-size: 24rpx; color: var(--muted); }
+.result-page { background: #fff; }
+.result-head { padding: 8rpx 0 34rpx; border-bottom: 1rpx solid #dfe2df; }
+.result-kicker { display: block; margin-bottom: 14rpx; color: #7d2f2a; font-size: 23rpx; }
+.result-meta { display: block; margin-top: 12rpx; color: #656b66; font-size: 24rpx; }
+.book-preview { position: relative; width: 430rpx; aspect-ratio: 0.72; margin: 46rpx auto; padding: 76rpx 50rpx; border: 2rpx solid #252a27; border-left: 18rpx solid #7d2f2a; border-radius: 4rpx; background: #fff; box-sizing: border-box; box-shadow: 12rpx 14rpx 0 #e2e5e2; }
+.book-rule { width: 64rpx; height: 3rpx; margin-bottom: 34rpx; background: #315e4c; }
+.book-title { display: block; font-family: "Songti SC", serif; font-size: 52rpx; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.book-edition { display: block; margin-top: 22rpx; color: #656b66; font-family: "Songti SC", serif; font-size: 25rpx; }
+.book-seal { position: absolute; right: 42rpx; bottom: 54rpx; display: flex; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; border: 3rpx solid #7d2f2a; color: #7d2f2a; font-family: "Songti SC", serif; font-size: 18rpx; line-height: 1.2; text-align: center; }
+.delivery-row { display: flex; justify-content: space-between; min-height: 86rpx; align-items: center; border-bottom: 1rpx solid #dfe2df; color: #656b66; font-size: 25rpx; }
+.delivery-row text:last-child { color: #252a27; }

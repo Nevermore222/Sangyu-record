@@ -1,0 +1,21 @@
+<view class="page visit-prepare">
+  <view wx:if="{{loading}}" class="loading">正在准备采集计划</view>
+  <empty-state wx:elif="{{error && !project}}" title="计划加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:elif="{{project}}">
+    <view class="page-head"><text class="page-title">{{project.display_name}}的走访准备</text><text class="page-meta">选择本轮需要重点采集的内容</text></view>
+    <view class="visit-fields">
+      <view class="field"><text class="field-label">走访日期</text><picker mode="date" value="{{visitedDate}}" bindchange="onDate"><view class="picker-value">{{visitedDate}} <text>›</text></view></picker></view>
+      <view class="field"><text class="field-label">走访地点</text><input value="{{location}}" bindinput="onLocation" placeholder="例如：家中、养老院或公园" /></view>
+      <view class="field"><text class="field-label">准备备注</text><textarea value="{{notes}}" bindinput="onNotes" auto-height maxlength="500" placeholder="可记录家属联系人或现场注意事项" /></view>
+    </view>
+    <text class="section-title">本轮采集任务</text>
+    <checkbox-group bindchange="onPlanChange">
+      <label class="plan-choice" wx:for="{{planChoices}}" wx:key="id">
+        <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#315e4c" />
+        <view class="plan-choice__copy"><view class="plan-choice__head"><text>{{item.categoryLabel}}</text><status-tag label="{{item.statusLabel}}" tone="{{item.statusTone}}"></status-tag></view><text class="plan-choice__prompt">{{item.prompt}}</text></view>
+      </label>
+    </checkbox-group>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+  </block>
+</view>
+<action-bar><button class="primary" loading="{{submitting}}" disabled="{{submitting || loading}}" bindtap="createVisit">进入现场采集</button></action-bar>

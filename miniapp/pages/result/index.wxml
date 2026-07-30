@@ -1,9 +1,13 @@
-<view class="page">
-  <view wx:if="{{loading}}" class="loading">正在读取成果</view>
-  <view wx:elif="{{error}}" class="error" bindtap="load">{{error}}\n轻触重试</view>
-  <view wx:elif="{{artifact}}">
-    <view class="page-head"><text class="page-title">回忆录已完成</text><text class="page-meta">第 {{artifact.version}} 版 · {{artifact.size_bytes}} 字节</text></view>
-    <view class="book-mark"><text>桑榆录</text><view></view><text class="book-sub">数字家庭档案</text></view>
-  </view>
+<view class="page result-page">
+  <view wx:if="{{loading}}" class="loading">正在读取回忆录成果</view>
+  <empty-state wx:elif="{{error && !artifact}}" title="成果加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:elif="{{artifact && project}}">
+    <view class="result-head"><text class="result-kicker">回忆录 PDF · 第 {{artifact.version}} 版</text><text class="page-title">{{project.display_name}}的人生故事</text><text class="result-meta">{{sizeLabel}} · 已完成自动编写与排版</text></view>
+    <view class="book-preview"><view class="book-rule"></view><text class="book-title">{{project.display_name}}</text><text class="book-edition">人生回忆录</text><view class="book-seal">桑榆录</view></view>
+    <view class="delivery-row"><text>文件格式</text><text>PDF</text></view>
+    <view class="delivery-row"><text>版本</text><text>第 {{artifact.version}} 版</text></view>
+    <view class="delivery-row"><text>文件大小</text><text>{{sizeLabel}}</text></view>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+  </block>
 </view>
-<view class="action-bar"><button class="primary" loading="{{opening}}" disabled="{{opening || !artifact}}" bindtap="openPDF">打开 PDF</button></view>
+<action-bar wx:if="{{artifact}}"><button class="primary" loading="{{opening}}" disabled="{{opening}}" bindtap="openPDF">打开回忆录 PDF</button></action-bar>

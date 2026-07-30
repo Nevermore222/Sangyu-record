@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "现场采集",
+  "usingComponents": {
+    "asset-row": "/components/asset-row/index",
+    "photo-grid": "/components/photo-grid/index"
+  }
+}

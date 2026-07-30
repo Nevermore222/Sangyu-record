@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "回忆录成果" }
+{
+  "navigationBarTitleText": "回忆录成果",
+  "enableShareAppMessage": true
+}

@@ -1,0 +1,6 @@
+<view class="photo-grid">
+  <view class="photo-cell" wx:for="{{items}}" wx:key="localID" data-path="{{item.filePath}}" bindtap="preview">
+    <image src="{{item.filePath}}" mode="aspectFill"></image>
+    <view class="photo-state photo-state--{{item.state}}">{{item.state === 'failed' ? '失败' : (item.state === 'uploading' ? item.progress + '%' : '待传')}}</view>
+  </view>
+</view>

@@ -1,0 +1,10 @@
+<view class="asset-row">
+  <view class="asset-kind asset-kind--{{item.kind}}">{{item.kind === 'audio' ? '音' : '图'}}</view>
+  <view class="asset-main">
+    <input wx:if="{{editable}}" class="asset-name asset-name--input" value="{{item.filename}}" bindblur="rename" />
+    <text wx:else class="asset-name">{{item.display_name || item.filename}}</text>
+    <text class="asset-meta">{{item.state === 'uploading' ? ('上传 ' + item.progress + '%') : (item.state === 'failed' ? item.error : (item.state === 'uploaded' ? '已上传' : '等待上传'))}}</text>
+    <picker wx:if="{{editable && associationOptions.length}}" range="{{associationOptions}}" data-local-id="{{item.localID}}" bindchange="associate"><text class="asset-association">关联：{{item.associationLabel || '全部本轮任务'}} ›</text></picker>
+  </view>
+  <button wx:if="{{removable}}" class="asset-remove" bindtap="remove" aria-label="移除物料">×</button>
+</view>

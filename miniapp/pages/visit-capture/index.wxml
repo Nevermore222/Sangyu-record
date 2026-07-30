@@ -1,0 +1,25 @@
+<view class="page capture-page">
+  <view wx:if="{{loading}}" class="loading">正在恢复现场物料</view>
+  <empty-state wx:elif="{{error && !visit}}" title="走访加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:elif="{{visit}}">
+    <view class="page-head"><text class="page-title">第 {{visit.sequence}} 次走访</text><text class="page-meta">{{visit.location}} · 本轮可采集多段录音和多张照片</text></view>
+    <view class="capture-tools">
+      <button class="capture-tool {{recording ? 'capture-tool--recording' : ''}}" disabled="{{uploading || submitting}}" bindtap="toggleRecord"><view class="record-icon"></view><text>{{recording ? '结束录音' : '现场录音'}}</text></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" bindtap="chooseAudio"><text class="tool-symbol">↥</text><text>导入音频</text></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="camera" bindtap="choosePhoto"><text class="tool-symbol">＋</text><text>拍摄照片</text></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="album" bindtap="choosePhoto"><text class="tool-symbol">▦</text><text>相册照片</text></button>
+    </view>
+
+    <text class="section-title">待上传物料</text>
+    <empty-state wx:if="{{queueItems.length === 0 && assets.length === 0}}" title="尚未采集物料"></empty-state>
+    <photo-grid wx:if="{{photoItems.length}}" items="{{photoItems}}"></photo-grid>
+    <asset-row wx:for="{{photoItems}}" wx:key="localID" item="{{item}}" editable="{{!item.assetID && !uploading && !submitting}}" removable="{{!uploading && !submitting}}" association-options="{{planOptions}}" bind:rename="renameItem" bind:remove="removeItem" bind:associate="associateItem"></asset-row>
+    <asset-row wx:for="{{audioItems}}" wx:key="localID" item="{{item}}" editable="{{!item.assetID && !uploading && !submitting}}" removable="{{!uploading && !submitting}}" association-options="{{planOptions}}" bind:rename="renameItem" bind:remove="removeItem" bind:associate="associateItem"></asset-row>
+    <asset-row wx:for="{{assets}}" wx:key="id" item="{{item}}"></asset-row>
+
+    <view class="notes-field"><text class="field-label">现场备注</text><textarea value="{{notes}}" bindinput="onNotes" maxlength="1000" placeholder="记录未进入录音的背景信息、照片人物或家属补充"></textarea></view>
+    <view wx:if="{{queueItems.length}}" class="upload-summary"><text>{{queueItems.length}} 项等待处理</text><button loading="{{uploading}}" disabled="{{recording || uploading || submitting}}" bindtap="uploadAll">{{uploading ? '正在上传' : '上传全部'}}</button></view>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+  </block>
+</view>
+<action-bar wx:if="{{visit}}"><button class="primary" loading="{{submitting}}" disabled="{{!canSubmit || recording || submitting || uploading}}" bindtap="submitVisit">提交本轮分析</button></action-bar>

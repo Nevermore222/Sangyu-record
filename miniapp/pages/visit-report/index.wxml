@@ -1,0 +1,18 @@
+<view class="page report-page">
+  <view wx:if="{{loading}}" class="report-processing"><view class="processing-line"><view></view><text>系统正在整理本轮录音与照片</text></view><text class="processing-meta">报告完成后会自动显示</text></view>
+  <empty-state wx:elif="{{visit && visit.state === 'failed'}}" title="本轮分析未完成" detail="{{visit.error_code || '服务暂时不可用'}}" action-label="重试分析" bind:action="retry"></empty-state>
+  <empty-state wx:elif="{{error && !analysis}}" title="报告加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:elif="{{analysis}}">
+    <view class="page-head"><text class="page-title">第 {{visit.sequence}} 次走访报告</text><text class="page-meta">已完成材料核对与补采规划</text></view>
+    <view class="summary-band"><text class="summary-label">本轮摘要</text><text class="summary-text">{{analysis.summary}}</text></view>
+    <text class="section-title">已覆盖内容</text>
+    <view class="report-row" wx:for="{{covered}}" wx:key="category"><view class="report-mark report-mark--success">✓</view><view><text class="row-title">{{item.category}}</text><text class="row-subtitle">关联 {{item.evidenceCount}} 条录音或照片证据</text></view></view>
+    <text class="section-title">材料缺口</text>
+    <empty-state wx:if="{{gaps.length === 0}}" title="本轮没有发现材料缺口"></empty-state>
+    <view class="report-row" wx:for="{{gaps}}" wx:key="category"><view class="report-mark report-mark--warning">!</view><view><text class="row-title">{{item.category}}</text><text class="row-subtitle">{{item.reason}}</text></view></view>
+    <text class="section-title">下次建议提问</text>
+    <view class="question-row" wx:for="{{questions}}" wx:key="question"><text class="question-index">{{index + 1}}</text><view><text class="question-category">{{item.category}}</text><text class="question-text">{{item.question}}</text></view></view>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+  </block>
+</view>
+<action-bar wx:if="{{analysis}}"><button class="primary" bindtap="startFollowup">按建议准备下次走访</button></action-bar>

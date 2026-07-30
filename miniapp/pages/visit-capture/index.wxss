@@ -1,0 +1,11 @@
+.capture-page { background: #fff; }
+.capture-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10rpx; }
+.capture-tool { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 128rpx; margin: 0; padding: 0 4rpx; border: 1rpx solid #cfd3cf; border-radius: 6rpx; background: #fff; color: #3f4540; font-size: 21rpx; line-height: 1.2; box-sizing: border-box; }
+.capture-tool--recording { border-color: #7d2f2a; background: #f9eeee; color: #7d2f2a; }
+.record-icon { width: 28rpx; height: 28rpx; margin-bottom: 14rpx; border-radius: 50%; background: #7d2f2a; }
+.capture-tool--recording .record-icon { border-radius: 4rpx; }
+.tool-symbol { height: 42rpx; margin-bottom: 8rpx; font-size: 36rpx; line-height: 42rpx; }
+.notes-field { margin-top: 36rpx; padding-top: 24rpx; border-top: 1rpx solid #dfe2df; }
+.notes-field textarea { width: 100%; min-height: 150rpx; padding: 18rpx; border: 1rpx solid #cfd3cf; border-radius: 6rpx; font-size: 25rpx; line-height: 1.6; box-sizing: border-box; }
+.upload-summary { display: flex; align-items: center; justify-content: space-between; margin-top: 24rpx; color: #656b66; font-size: 24rpx; }
+.upload-summary button { width: 180rpx; height: 68rpx; margin: 0; border: 1rpx solid #315e4c; border-radius: 6rpx; background: #fff; color: #315e4c; font-size: 24rpx; line-height: 66rpx; }

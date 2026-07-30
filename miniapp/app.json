@@ -6,12 +6,15 @@
     "pages/profile/index",
     "pages/create/index",
     "pages/project/index",
-    "pages/upload/index",
+    "pages/visit-prepare/index",
+    "pages/visit-capture/index",
+    "pages/visit-report/index",
+    "pages/workflow/index",
     "pages/result/index"
   ],
   "window": {
     "navigationBarTitleText": "桑榆录",
-    "navigationBarBackgroundColor": "#f7f5f0",
+    "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f4f5f3"
   },

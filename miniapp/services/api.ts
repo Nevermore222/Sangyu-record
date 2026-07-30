@@ -81,6 +81,24 @@ export interface VisitAnalysis {
   followup_questions: Array<{ plan_item_id: string; question: string }>
 }
 
+export interface CreateVisitInput {
+  visited_at: string
+  location: string
+  notes: string
+  plan_item_ids: string[]
+}
+
+export interface InitiateAssetInput {
+  visit_id?: string
+  kind: 'audio' | 'photo'
+  source?: 'direct' | 'wechat_file' | 'album' | 'camera'
+  filename: string
+  display_name?: string
+  content_type: string
+  size_bytes: number
+  plan_item_ids?: string[]
+}
+
 export interface CreateProjectInput {
   display_name: string
   birth_year: number
@@ -224,16 +242,26 @@ export function createAPI({
     getProject: (projectID: string) => call<Project>('GET', `/v1/staff/projects/${projectID}`),
     confirmConsent: (projectID: string, confirmedBy: 'elder' | 'guardian') =>
       call<Consent>('POST', `/v1/staff/projects/${projectID}/consents`, { confirmed_by: confirmedBy }),
+    createVisit: (projectID: string, input: CreateVisitInput) =>
+      call<Visit>('POST', `/v1/staff/projects/${projectID}/visits`, input),
     listVisits: (projectID: string) =>
       call<{ items: Visit[] }>('GET', `/v1/staff/projects/${projectID}/visits`),
+    getVisit: (visitID: string) => call<Visit>('GET', `/v1/staff/visits/${visitID}`),
+    updateVisit: (visitID: string, input: Partial<CreateVisitInput>) =>
+      call<Visit>('PATCH', `/v1/staff/visits/${visitID}`, input),
     listVisitAssets: (visitID: string) =>
       call<{ items: Asset[] }>('GET', `/v1/staff/visits/${visitID}/assets`),
     getVisitAnalysis: (visitID: string) =>
       call<VisitAnalysis>('GET', `/v1/staff/visits/${visitID}/analysis`),
-    initiateAsset: (
-      projectID: string,
-      input: { kind: 'audio' | 'photo'; filename: string; content_type: string; size_bytes: number }
-    ) => call<UploadTicket>('POST', `/v1/staff/projects/${projectID}/assets:initiate`, input),
+    submitVisit: (visitID: string) =>
+      call<WorkflowRun>('POST', `/v1/staff/visits/${visitID}:submit`, {}),
+    retryVisit: (visitID: string) =>
+      call('POST', `/v1/staff/visits/${visitID}:retry`, {}),
+    initiateAsset: (projectID: string, input: InitiateAssetInput) =>
+      call<UploadTicket>('POST', `/v1/staff/projects/${projectID}/assets:initiate`, input),
+    renewAssetUpload: (assetID: string) =>
+      call<UploadTicket>('POST', `/v1/staff/assets/${assetID}:renew-upload`, {}),
+    deleteAsset: (assetID: string) => call<void>('DELETE', `/v1/staff/assets/${assetID}`),
     completeAsset: (assetID: string, digest: string) =>
       call('POST', `/v1/staff/assets/${assetID}:complete`, { sha256: digest }),
     startWorkflow: (projectID: string) =>

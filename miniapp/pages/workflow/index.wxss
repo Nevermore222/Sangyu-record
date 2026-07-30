@@ -1,0 +1,15 @@
+.workflow-page { background: #fff; }
+.workflow-list { margin-top: 12rpx; }
+.workflow-stage { display: flex; min-height: 104rpx; }
+.stage-axis { position: relative; width: 48rpx; }
+.stage-axis::after { content: ""; position: absolute; top: 30rpx; bottom: -30rpx; left: 14rpx; width: 1rpx; background: #dfe2df; }
+.workflow-stage:last-child .stage-axis::after { display: none; }
+.stage-dot { position: relative; z-index: 1; width: 28rpx; height: 28rpx; margin-top: 18rpx; border: 4rpx solid #c7cbc8; border-radius: 50%; background: #fff; box-sizing: border-box; }
+.stage-dot--info { border-color: #315e4c; }
+.stage-dot--success { border-color: #315e4c; background: #315e4c; }
+.stage-dot--danger { border-color: #7d2f2a; background: #7d2f2a; }
+.workflow-stage--active .stage-dot { box-shadow: 0 0 0 10rpx rgba(49, 94, 76, 0.12); }
+.stage-copy { display: flex; align-items: flex-start; justify-content: space-between; flex: 1; gap: 18rpx; padding: 14rpx 0 28rpx; border-bottom: 1rpx solid #edf0ed; }
+.stage-label { color: #303531; font-size: 27rpx; line-height: 1.5; }
+.workflow-error { margin-top: 28rpx; padding: 24rpx 0; border-top: 2rpx solid #7d2f2a; color: #7d2f2a; font-size: 25rpx; }
+.workflow-error text { display: block; margin-top: 8rpx; }

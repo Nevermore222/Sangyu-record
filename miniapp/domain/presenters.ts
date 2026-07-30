@@ -84,3 +84,22 @@ const categories: Record<string, string> = {
 export function presentCategory(category: string): string {
   return categories[category] || '其他记忆'
 }
+
+const workflowNodes: Record<string, string> = {
+  transcribe: '整理访谈录音',
+  understand_photo: '识别照片内容',
+  build_memory: '串联个人记忆',
+  retrieve_shared_memory: '补充时代背景',
+  plan_book: '规划篇章结构',
+  write_book: '编写回忆录正文',
+  render_pdf: '生成回忆录 PDF',
+  visit_transcribe: '整理本轮录音',
+  visit_understand_photo: '识别本轮照片',
+  visit_assess_material: '核对采集任务',
+  visit_plan_followup: '生成补采问题',
+  visit_persist_analysis: '保存走访报告'
+}
+
+export function presentWorkflowNode(name: string): string {
+  return workflowNodes[name] || '处理资料'
+}

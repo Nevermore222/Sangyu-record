@@ -14,6 +14,7 @@ export interface UploadQueueItem {
   kind: UploadKind
   source: UploadSource
   planItemIDs?: string[]
+  associationLabel?: string
   state: UploadState
   progress: number
   error?: string
@@ -35,8 +36,14 @@ export function createUploadQueue(storage: UploadQueueStorage, uploader: QueueUp
     state: item.state === 'uploading' ? 'local' as const : item.state
   }))
   let resumePromise: Promise<void> | undefined
+  const listeners = new Set<(items: UploadQueueItem[]) => void>()
 
-  const persist = () => storage.save(items.map((item) => ({ ...item })))
+  const snapshot = () => items.map((item) => ({ ...item }))
+  const persist = () => {
+    const current = snapshot()
+    storage.save(current)
+    listeners.forEach((listener) => listener(current))
+  }
   const resume = (): Promise<void> => {
     if (resumePromise) return resumePromise
     resumePromise = (async () => {
@@ -84,8 +91,13 @@ export function createUploadQueue(storage: UploadQueueStorage, uploader: QueueUp
       }
       return resume()
     },
+    subscribe: (listener: (items: UploadQueueItem[]) => void) => {
+      listeners.add(listener)
+      listener(snapshot())
+      return () => listeners.delete(listener)
+    },
     resume,
-    snapshot: () => items.map((item) => ({ ...item }))
+    snapshot
   }
 }
 

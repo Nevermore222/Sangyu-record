@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { presentDashboard, presentStatus } from './presenters'
+import { presentDashboard, presentStatus, presentWorkflowNode } from './presenters'
 
 describe('status presenter', () => {
   it('maps backend states to stable Chinese labels and tones', () => {
@@ -20,5 +20,11 @@ describe('status presenter', () => {
     })
 
     expect(rows.actionable.map((row) => row.action)).toEqual(['补充采集', '查看成果', '继续处理'])
+  })
+
+  it('maps technical workflow nodes to staff-facing stages', () => {
+    expect(presentWorkflowNode('transcribe')).toBe('整理访谈录音')
+    expect(presentWorkflowNode('retrieve_shared_memory')).toBe('补充时代背景')
+    expect(presentWorkflowNode('render_pdf')).toBe('生成回忆录 PDF')
   })
 })

@@ -108,7 +108,7 @@ Page({
   openVisit(event: WechatMiniprogram.BaseEvent) {
     const visitID = event.currentTarget.dataset.id as string
     const visit = this.data.visits.find((item) => item.id === visitID)
-    const page = visit?.state === 'completed' ? 'visit-report' : 'visit-capture'
+    const page = visit?.state === 'draft' ? 'visit-capture' : 'visit-report'
     void wx.navigateTo({ url: `/pages/${page}/index?visitID=${visitID}&projectID=${this.data.projectID}` })
   },
 

@@ -24,6 +24,25 @@ describe('upload queue', () => {
     expect(removeLocalFile).toHaveBeenCalledWith('saved-ok')
     expect(removeLocalFile).not.toHaveBeenCalledWith('saved-bad')
   })
+
+  it('notifies subscribers as progress changes', async () => {
+    const storage = {
+      load: () => [item('progress')],
+      save: vi.fn()
+    }
+    const snapshots: number[][] = []
+    const queue = createUploadQueue(storage, {
+      upload: async (_value, onProgress) => onProgress(42),
+      removeLocalFile: vi.fn()
+    })
+    const unsubscribe = queue.subscribe((items) => snapshots.push(items.map((value) => value.progress)))
+
+    await queue.resume()
+    unsubscribe()
+
+    expect(snapshots).toContainEqual([42])
+    expect(snapshots.at(-1)).toEqual([])
+  })
 })
 
 function item(localID: string): UploadQueueItem {

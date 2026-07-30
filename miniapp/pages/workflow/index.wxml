@@ -1,0 +1,11 @@
+<view class="page workflow-page">
+  <view wx:if="{{loading}}" class="loading">正在读取成书进度</view>
+  <empty-state wx:elif="{{error && !run}}" title="进度加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:elif="{{run}}">
+    <view class="page-head"><text class="page-title">回忆录制作中</text><text class="page-meta">系统正在自动整理、编写与排版</text></view>
+    <view class="workflow-list"><view class="workflow-stage {{item.active ? 'workflow-stage--active' : ''}}" wx:for="{{nodes}}" wx:key="name"><view class="stage-axis"><view class="stage-dot stage-dot--{{item.stateTone}}"></view></view><view class="stage-copy"><text class="stage-label">{{item.label}}</text><status-tag label="{{item.stateLabel}}" tone="{{item.stateTone}}"></status-tag></view></view></view>
+    <view wx:if="{{run.state === 'failed'}}" class="workflow-error"><text>自动成书暂停</text><text>{{run.error_code || '请稍后重试'}}</text></view>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+  </block>
+</view>
+<action-bar wx:if="{{run && run.state === 'succeeded'}}"><button class="primary" bindtap="openResult">查看回忆录 PDF</button></action-bar>

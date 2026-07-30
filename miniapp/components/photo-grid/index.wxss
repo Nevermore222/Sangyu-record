@@ -1,0 +1,5 @@
+.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12rpx; }
+.photo-cell { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 6rpx; background: #eceeec; }
+.photo-cell image { width: 100%; height: 100%; }
+.photo-state { position: absolute; right: 8rpx; bottom: 8rpx; min-width: 54rpx; height: 34rpx; padding: 0 8rpx; border-radius: 4rpx; background: rgba(37, 42, 39, 0.78); color: #fff; font-size: 19rpx; line-height: 34rpx; text-align: center; }
+.photo-state--failed { background: rgba(125, 47, 42, 0.88); }
