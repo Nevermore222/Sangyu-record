@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,6 +15,7 @@ type Config struct {
 	RedisURL                string
 	S3Endpoint              string
 	S3PublicEndpoint        string
+	S3PublicSecure          bool
 	S3AccessKey             string
 	S3SecretKey             string
 	S3Bucket                string
@@ -62,6 +64,13 @@ func Load() (Config, error) {
 		SessionSecret:           os.Getenv("SESSION_SECRET"),
 	}
 	cfg.S3PublicEndpoint = envOr("S3_PUBLIC_ENDPOINT", cfg.S3Endpoint)
+	if value := strings.TrimSpace(os.Getenv("S3_PUBLIC_SECURE")); value != "" {
+		secure, err := strconv.ParseBool(value)
+		if err != nil {
+			return Config{}, errors.New("S3_PUBLIC_SECURE must be true or false")
+		}
+		cfg.S3PublicSecure = secure
+	}
 	if cfg.DatabaseURL == "" || cfg.RedisURL == "" || cfg.S3Endpoint == "" {
 		return Config{}, errors.New("DATABASE_URL, REDIS_URL, and S3_ENDPOINT are required")
 	}

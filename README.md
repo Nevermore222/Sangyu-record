@@ -20,7 +20,15 @@
 
 环境要求：Windows PowerShell 5.1+、Go 1.26.x、Node.js/npm 和已启动的 Docker Desktop。
 
-一键构建并验证完整流程：
+一键启动后端并完成小程序全链路验收：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/miniapp-local.ps1
+```
+
+该命令会验证两条真实链路：基础单走访流程，以及包含员工隔离、两次走访分析、重复成书幂等和最终 PDF 的工作人员小程序流程。服务会保持运行，随后可直接导入微信开发者工具。
+
+只运行后端纵向验证：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/vertical-slice.ps1
@@ -94,3 +102,5 @@ Provider 边界设计见 `docs/superpowers/specs/2026-07-30-external-provider-bo
 3. 确认 `miniapp/env.ts` 指向 `http://localhost:8080`。
 4. 在“工具 -> 构建 npm”生成 `miniprogram_npm`。
 5. 创建项目、上传录音与照片、启动处理并下载 PDF。
+
+完整的小程序本地联调、生产 HTTPS、微信合法域名、体验版发布和备份说明见 [`docs/deployment-miniapp.md`](docs/deployment-miniapp.md)。生产模板位于 `deploy/production`，固定使用微信登录，不暴露 PostgreSQL、Redis、MinIO、Chromium 或 Worker 端口。

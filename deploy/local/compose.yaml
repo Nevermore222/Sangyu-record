@@ -69,6 +69,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: minio:9000
       S3_PUBLIC_ENDPOINT: localhost:9000
+      S3_PUBLIC_SECURE: "false"
       S3_ACCESS_KEY: sangyu
       S3_SECRET_KEY: sangyu-local-secret
       S3_BUCKET: sangyu-private

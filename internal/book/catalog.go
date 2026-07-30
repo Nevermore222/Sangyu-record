@@ -7,7 +7,7 @@ import (
 )
 
 type LatestArtifactRepository interface {
-	Latest(context.Context, uuid.UUID) (Artifact, error)
+	LatestOwned(context.Context, uuid.UUID, uuid.UUID, bool) (Artifact, error)
 }
 
 type DownloadStore interface {
@@ -15,17 +15,22 @@ type DownloadStore interface {
 }
 
 type Catalog struct {
-	repo   LatestArtifactRepository
-	store  DownloadStore
-	bucket string
+	repo         LatestArtifactRepository
+	store        DownloadStore
+	bucket       string
+	allowUnowned bool
 }
 
 func NewCatalog(repo LatestArtifactRepository, store DownloadStore, bucket string) *Catalog {
 	return &Catalog{repo: repo, store: store, bucket: bucket}
 }
 
-func (c *Catalog) Latest(ctx context.Context, projectID uuid.UUID) (Artifact, error) {
-	artifact, err := c.repo.Latest(ctx, projectID)
+func NewCatalogWithConfig(repo LatestArtifactRepository, store DownloadStore, bucket string, allowUnowned bool) *Catalog {
+	return &Catalog{repo: repo, store: store, bucket: bucket, allowUnowned: allowUnowned}
+}
+
+func (c *Catalog) Latest(ctx context.Context, projectID, staffID uuid.UUID) (Artifact, error) {
+	artifact, err := c.repo.LatestOwned(ctx, projectID, staffID, c.allowUnowned)
 	if err != nil {
 		return Artifact{}, err
 	}

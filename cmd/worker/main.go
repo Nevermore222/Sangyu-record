@@ -24,7 +24,8 @@ func main() {
 		log.Fatal(err)
 	}
 	providerObjectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
-		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
+		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+		Region: cfg.S3Region, Secure: cfg.S3PublicSecure,
 	})
 	if err != nil {
 		log.Fatal(err)

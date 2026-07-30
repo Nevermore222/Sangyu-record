@@ -1,0 +1,199 @@
+name: sangyu-record-production
+
+x-app-environment: &app-environment
+  HTTP_ADDRESS: :8080
+  DATABASE_URL: postgres://sangyu:${POSTGRES_PASSWORD}@postgres:5432/sangyu?sslmode=disable
+  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  S3_ENDPOINT: minio:9000
+  S3_PUBLIC_ENDPOINT: ${FILES_DOMAIN}
+  S3_PUBLIC_SECURE: "true"
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+  S3_SECRET_KEY: ${S3_SECRET_KEY}
+  S3_BUCKET: ${S3_BUCKET:-sangyu-private}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  CHROMIUM_URL: http://chromium:9222
+  MEDIA_PROVIDER_URL: ${MEDIA_PROVIDER_URL}
+  MEDIA_PROVIDER_TOKEN: ${MEDIA_PROVIDER_TOKEN}
+  KNOWLEDGE_PROVIDER_URL: ${KNOWLEDGE_PROVIDER_URL}
+  KNOWLEDGE_PROVIDER_TOKEN: ${KNOWLEDGE_PROVIDER_TOKEN}
+  AGENT_PROVIDER_URL: ${AGENT_PROVIDER_URL}
+  AGENT_PROVIDER_TOKEN: ${AGENT_PROVIDER_TOKEN}
+  PROVIDER_ALLOWED_HOSTS: ${PROVIDER_ALLOWED_HOSTS}
+  PROVIDER_CALLBACK_BASE_URL: https://${API_DOMAIN}
+  PROVIDER_CALLBACK_SECRET: ${PROVIDER_CALLBACK_SECRET}
+  PROVIDER_POLL_INTERVAL: ${PROVIDER_POLL_INTERVAL:-5s}
+  AUTH_MODE: wechat
+  SESSION_SECRET: ${SESSION_SECRET}
+  SESSION_TTL: ${SESSION_TTL:-12h}
+  WECHAT_APP_ID: ${WECHAT_APP_ID}
+  WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
+  STAFF_OPENID_ALLOWLIST: ${STAFF_OPENID_ALLOWLIST}
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      FILES_DOMAIN: ${FILES_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge, backend]
+    depends_on:
+      api:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sangyu
+      POSTGRES_USER: sangyu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sangyu -d sangyu"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis-data:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-sangyu-private}
+    volumes:
+      - ./init-minio.sh:/init-minio.sh:ro
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    networks: [backend]
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.app
+      target: migrate
+    restart: "no"
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://sangyu:${POSTGRES_PASSWORD}@postgres:5432/sangyu?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.app
+      target: api
+    restart: unless-stopped
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks: [backend, outbound]
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/production/Dockerfile.app
+      target: worker
+    restart: unless-stopped
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      chromium:
+        condition: service_healthy
+    networks: [backend, outbound]
+    healthcheck:
+      test: ["CMD-SHELL", "test -r /proc/1/stat"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  chromium:
+    image: chromedp/headless-shell:latest
+    restart: unless-stopped
+    shm_size: 512m
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "test -r /proc/1/stat"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+networks:
+  edge:
+  backend:
+    internal: true
+  outbound:
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  caddy-data:
+  caddy-config:

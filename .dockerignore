@@ -4,4 +4,5 @@ bin
 miniapp/node_modules
 miniapp/miniprogram_npm
 providers/mock/node_modules
+deploy/production/.env.production
 *.log

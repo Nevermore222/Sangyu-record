@@ -1,0 +1,28 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+	reverse_proxy api:8080 {
+		health_uri /healthz
+		health_interval 10s
+	}
+}
+
+{$FILES_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+	}
+	@admin path /minio/admin* /minio/health* /minio/metrics*
+	respond @admin 404
+	@unsupported not method GET HEAD PUT
+	respond @unsupported 405
+	reverse_proxy minio:9000
+}

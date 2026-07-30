@@ -54,17 +54,18 @@ try {
     Invoke-Native go test ./...
     Invoke-Native go vet ./...
     Invoke-Native npm --prefix providers/mock test
+    Invoke-Native npm --prefix miniapp ci
     Invoke-Native npm --prefix miniapp test
     Invoke-Native npm --prefix miniapp run typecheck
 
     $env:TEST_API_URL = 'http://localhost:8080'
     $env:TEST_DATABASE_URL = 'postgres://sangyu:sangyu@localhost:5432/sangyu?sslmode=disable'
     Invoke-Native -Command go -Arguments @(
-        'test', './test/integration', '-run', 'TestFoundationVerticalSlice', '-v', '-count=1'
+        'test', './test/integration', '-run', 'Test(Foundation|StaffMiniapp)VerticalSlice', '-v', '-count=1'
     )
 
     Write-Output ''
-    Write-Output 'Foundation vertical slice passed. Services remain running.'
+    Write-Output 'Foundation and staff miniapp vertical slices passed. Services remain running.'
     Write-Output 'API: http://localhost:8080'
     Write-Output 'MinIO console: http://localhost:9001'
 } catch {

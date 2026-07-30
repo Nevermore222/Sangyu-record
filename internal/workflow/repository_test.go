@@ -25,13 +25,20 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	}
 	t.Cleanup(pool.Close)
 	testdb.Serialize(t, pool)
-	if _, err := pool.Exec(ctx, "TRUNCATE workflow_nodes, workflow_runs, assets, collection_plan_items, projects CASCADE"); err != nil {
+	if _, err := pool.Exec(ctx, "TRUNCATE workflow_nodes, workflow_runs, assets, collection_plan_items, projects, staff CASCADE"); err != nil {
+		t.Fatal(err)
+	}
+	ownerID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO staff (id, wechat_openid, display_name, state)
+		VALUES ($1, $2, 'Project Owner', 'active')`, ownerID, ownerID.String()); err != nil {
 		t.Fatal(err)
 	}
 	project, err := projects.NewService(
 		projects.NewPostgresRepository(pool), projects.DeterministicPlanner{},
 	).Create(ctx, projects.CreateInput{
-		DisplayName: "测试老人", BirthYear: 1950, BirthPlace: "南京",
+		OwnerStaffID: ownerID,
+		DisplayName:  "测试老人", BirthYear: 1950, BirthPlace: "南京",
 		LongTermResidence: "南京", TargetEdition: "brief",
 	})
 	if err != nil {
@@ -61,7 +68,7 @@ func TestPostgresRepositoryCreatesAndAdvancesRun(t *testing.T) {
 	if len(run.Nodes) != len(NodeSequence) {
 		t.Fatalf("nodes = %d, want %d", len(run.Nodes), len(NodeSequence))
 	}
-	loaded, err := repo.LatestRun(ctx, project.ID)
+	loaded, err := repo.LatestRun(ctx, project.ID, project.OwnerStaffID, false)
 	if err != nil {
 		t.Fatal(err)
 	}

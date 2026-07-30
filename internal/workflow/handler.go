@@ -13,8 +13,8 @@ import (
 )
 
 type Application interface {
-	Start(context.Context, uuid.UUID) (Run, error)
-	Latest(context.Context, uuid.UUID) (Run, error)
+	Start(context.Context, uuid.UUID, uuid.UUID) (Run, error)
+	Latest(context.Context, uuid.UUID, uuid.UUID) (Run, error)
 	Finalize(context.Context, uuid.UUID, uuid.UUID, FinalizeInput) (Run, error)
 }
 
@@ -73,7 +73,16 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	run, err := h.service.Start(r.Context(), projectID)
+	current, ok := staff.FromContext(r.Context())
+	if !ok {
+		writeWorkflowError(w, http.StatusUnauthorized, "staff_unauthorized", "staff login is required")
+		return
+	}
+	run, err := h.service.Start(r.Context(), projectID, current.ID)
+	if errors.Is(err, ErrProjectNotFound) {
+		writeWorkflowError(w, http.StatusNotFound, "project_not_found", err.Error())
+		return
+	}
 	if errors.Is(err, ErrInsufficientAssets) {
 		writeWorkflowError(w, http.StatusConflict, "insufficient_assets", err.Error())
 		return
@@ -90,8 +99,13 @@ func (h *Handler) latest(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	run, err := h.service.Latest(r.Context(), projectID)
-	if errors.Is(err, ErrRunNotFound) {
+	current, ok := staff.FromContext(r.Context())
+	if !ok {
+		writeWorkflowError(w, http.StatusUnauthorized, "staff_unauthorized", "staff login is required")
+		return
+	}
+	run, err := h.service.Latest(r.Context(), projectID, current.ID)
+	if errors.Is(err, ErrRunNotFound) || errors.Is(err, ErrProjectNotFound) {
 		writeWorkflowError(w, http.StatusNotFound, "workflow_not_found", err.Error())
 		return
 	}

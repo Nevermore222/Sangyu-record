@@ -345,15 +345,34 @@ func (r *PostgresRepository) FailNode(ctx context.Context, payload NodePayload, 
 	return tx.Commit(ctx)
 }
 
-func (r *PostgresRepository) LatestRun(ctx context.Context, projectID uuid.UUID) (Run, error) {
+func (r *PostgresRepository) ProjectOwned(ctx context.Context, projectID, staffID uuid.UUID, includeUnowned bool) error {
+	var exists bool
+	if err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM projects
+			WHERE id=$1 AND (owner_staff_id=$2 OR ($3 AND owner_staff_id IS NULL))
+		)`, projectID, staffID, includeUnowned).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return ErrProjectNotFound
+	}
+	return nil
+}
+
+func (r *PostgresRepository) LatestRun(ctx context.Context, projectID, staffID uuid.UUID, includeUnowned bool) (Run, error) {
 	var run Run
 	var state, kind string
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, project_id, COALESCE(visit_id, '00000000-0000-0000-0000-000000000000'::uuid),
-		       kind, state, COALESCE(error_code, ''), created_at, updated_at
+		SELECT workflow_runs.id, workflow_runs.project_id,
+		       COALESCE(workflow_runs.visit_id, '00000000-0000-0000-0000-000000000000'::uuid),
+		       workflow_runs.kind, workflow_runs.state, COALESCE(workflow_runs.error_code, ''),
+		       workflow_runs.created_at, workflow_runs.updated_at
 		FROM workflow_runs
-		WHERE project_id=$1 AND kind='book'
-		ORDER BY created_at DESC LIMIT 1`, projectID).Scan(
+		JOIN projects ON projects.id=workflow_runs.project_id
+		WHERE workflow_runs.project_id=$1 AND workflow_runs.kind='book'
+		  AND (projects.owner_staff_id=$2 OR ($3 AND projects.owner_staff_id IS NULL))
+		ORDER BY workflow_runs.created_at DESC LIMIT 1`, projectID, staffID, includeUnowned).Scan(
 		&run.ID, &run.ProjectID, &run.VisitID, &kind, &state,
 		&run.ErrorCode, &run.CreatedAt, &run.UpdatedAt,
 	)

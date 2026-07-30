@@ -74,3 +74,22 @@ func (r *PostgresRepository) Latest(ctx context.Context, projectID uuid.UUID) (A
 	}
 	return artifact, err
 }
+
+func (r *PostgresRepository) LatestOwned(ctx context.Context, projectID, staffID uuid.UUID, includeUnowned bool) (Artifact, error) {
+	var artifact Artifact
+	err := r.pool.QueryRow(ctx, `
+		SELECT artifacts.id, artifacts.project_id, artifacts.workflow_run_id, artifacts.version,
+		       artifacts.kind, artifacts.object_key, artifacts.content_type, artifacts.size_bytes, artifacts.created_at
+		FROM artifacts
+		JOIN projects ON projects.id=artifacts.project_id
+		WHERE artifacts.project_id=$1 AND artifacts.kind='pdf'
+		  AND (projects.owner_staff_id=$2 OR ($3 AND projects.owner_staff_id IS NULL))
+		ORDER BY artifacts.version DESC LIMIT 1`, projectID, staffID, includeUnowned).Scan(
+		&artifact.ID, &artifact.ProjectID, &artifact.WorkflowRunID, &artifact.Version,
+		&artifact.Kind, &artifact.ObjectKey, &artifact.ContentType, &artifact.SizeBytes, &artifact.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Artifact{}, ErrArtifactNotFound
+	}
+	return artifact, err
+}

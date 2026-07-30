@@ -28,7 +28,11 @@ func (r *memoryRunRepository) CreateRun(_ context.Context, input CreateRunInput)
 	return r.run, nil
 }
 
-func (r *memoryRunRepository) LatestRun(_ context.Context, _ uuid.UUID) (Run, error) {
+func (r *memoryRunRepository) ProjectOwned(_ context.Context, _, _ uuid.UUID, _ bool) error {
+	return nil
+}
+
+func (r *memoryRunRepository) LatestRun(_ context.Context, _, _ uuid.UUID, _ bool) (Run, error) {
 	return r.run, nil
 }
 
@@ -54,7 +58,7 @@ func TestStartPersistsBeforeEnqueueingFirstNode(t *testing.T) {
 	service := NewService(repo, queue)
 	projectID := uuid.New()
 
-	run, err := service.Start(context.Background(), projectID)
+	run, err := service.Start(context.Background(), projectID, uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}

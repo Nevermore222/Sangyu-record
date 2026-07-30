@@ -42,6 +42,10 @@ func (r *memoryArtifactRepository) Latest(_ context.Context, _ uuid.UUID) (Artif
 	return r.saved, nil
 }
 
+func (r *memoryArtifactRepository) LatestOwned(_ context.Context, _, _ uuid.UUID, _ bool) (Artifact, error) {
+	return r.saved, nil
+}
+
 func (s *memoryArtifactStore) PresignGet(_ context.Context, _ string, _ string) (string, error) {
 	return "http://localhost:9000/download", nil
 }

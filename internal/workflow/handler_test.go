@@ -16,9 +16,12 @@ func TestHandlerStartsWorkflow(t *testing.T) {
 	repo := &memoryRunRepository{}
 	service := NewService(repo, &memoryQueue{})
 	router := chi.NewRouter()
+	owner := staff.Staff{ID: uuid.New(), State: staff.StateActive}
+	router.Use(staff.NewMiddleware(workflowTestAuthenticator{value: owner}).Handle)
 	NewHandler(service).Register(router)
 	projectID := uuid.New()
 	req := httptest.NewRequest(http.MethodPost, "/projects/"+projectID.String()+"/workflow:start", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)

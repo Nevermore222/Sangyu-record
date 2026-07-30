@@ -8,7 +8,8 @@ import (
 
 type RunRepository interface {
 	CreateRun(context.Context, CreateRunInput) (Run, error)
-	LatestRun(context.Context, uuid.UUID) (Run, error)
+	ProjectOwned(context.Context, uuid.UUID, uuid.UUID, bool) error
+	LatestRun(context.Context, uuid.UUID, uuid.UUID, bool) (Run, error)
 	FinalizeBook(context.Context, FinalizeBookRequest) (Run, bool, error)
 }
 
@@ -26,7 +27,13 @@ func NewServiceWithConfig(repo RunRepository, queue Enqueuer, allowUnowned bool)
 	return &Service{repo: repo, queue: queue, allowUnowned: allowUnowned}
 }
 
-func (s *Service) Start(ctx context.Context, projectID uuid.UUID) (Run, error) {
+func (s *Service) Start(ctx context.Context, projectID, staffID uuid.UUID) (Run, error) {
+	if projectID == uuid.Nil || staffID == uuid.Nil {
+		return Run{}, ErrInvalidRun
+	}
+	if err := s.repo.ProjectOwned(ctx, projectID, staffID, s.allowUnowned); err != nil {
+		return Run{}, err
+	}
 	return s.StartRun(ctx, CreateRunInput{
 		ProjectID: projectID,
 		Kind:      RunKindBook,
@@ -49,8 +56,8 @@ func (s *Service) StartRun(ctx context.Context, input CreateRunInput) (Run, erro
 	return run, err
 }
 
-func (s *Service) Latest(ctx context.Context, projectID uuid.UUID) (Run, error) {
-	return s.repo.LatestRun(ctx, projectID)
+func (s *Service) Latest(ctx context.Context, projectID, staffID uuid.UUID) (Run, error) {
+	return s.repo.LatestRun(ctx, projectID, staffID, s.allowUnowned)
 }
 
 func (s *Service) Finalize(ctx context.Context, projectID, staffID uuid.UUID, input FinalizeInput) (Run, error) {

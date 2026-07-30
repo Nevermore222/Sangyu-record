@@ -76,7 +76,8 @@ func main() {
 		log.Fatal(err)
 	}
 	publicObjectClient, err := platform.NewObjectStore(platform.ObjectStoreConfig{
-		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, Region: cfg.S3Region,
+		Endpoint: cfg.S3PublicEndpoint, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey,
+		Region: cfg.S3Region, Secure: cfg.S3PublicSecure,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -118,7 +119,7 @@ func main() {
 	visitAnalysisHandler := visitanalysis.NewHandler(visitAnalysisService)
 	bookRepo := book.NewPostgresRepository(pool)
 	artifactStore := book.NewMinioArtifactStore(objectClient, publicObjectClient)
-	bookHandler := book.NewHandler(book.NewCatalog(bookRepo, artifactStore, cfg.S3Bucket))
+	bookHandler := book.NewHandler(book.NewCatalogWithConfig(bookRepo, artifactStore, cfg.S3Bucket, cfg.AuthMode == "dev"))
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddress,

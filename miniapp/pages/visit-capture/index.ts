@@ -1,4 +1,4 @@
-import type { Asset, Visit } from '../../services/api'
+import { APIError, type Asset, type Visit } from '../../services/api'
 import { presentCategory } from '../../domain/presenters'
 import { canSubmitVisit } from '../../domain/capture'
 import { api } from '../../services/client'
@@ -8,6 +8,7 @@ import { createLocalID, uploadQueue, visitQueueItems } from '../../services/uplo
 
 const recorder = wx.getRecorderManager()
 let recorderStop: Parameters<typeof recorder.onStop>[0] | undefined
+let recorderError: Parameters<typeof recorder.onError>[0] | undefined
 let unsubscribeUploadQueue: (() => void) | undefined
 let capturePageActive = false
 recorder.onStop((result) => {
@@ -15,6 +16,7 @@ recorder.onStop((result) => {
   handler?.(result)
   if (!capturePageActive) recorderStop = undefined
 })
+recorder.onError((error) => recorderError?.(error))
 
 Page({
   data: {
@@ -40,6 +42,11 @@ Page({
     capturePageActive = true
     this.setData({ projectID: options.projectID || '', visitID: options.visitID || '' })
     recorderStop = (result) => void this.handleRecordedFile(result.tempFilePath)
+    recorderError = (error) => {
+      if (!capturePageActive) return
+      this.setData({ recording: false, error: error.errMsg || '录音启动失败，请检查麦克风权限' })
+      this.syncUnloadWarning(visitQueueItems(this.data.visitID))
+    }
     unsubscribeUploadQueue = uploadQueue.subscribe(() => this.refreshQueueView())
     void this.load()
   },
@@ -58,6 +65,7 @@ Page({
     } else {
       recorderStop = undefined
     }
+    recorderError = undefined
     wx.disableAlertBeforeUnload()
   },
 
@@ -125,7 +133,7 @@ Page({
       this.setData({ recording: false })
       return
     }
-    recorder.start({ format: 'mp3', sampleRate: 16000, numberOfChannels: 1, encodeBitRate: 48000 })
+    recorder.start({ duration: 600000, format: 'mp3', sampleRate: 16000, numberOfChannels: 1, encodeBitRate: 48000 })
     this.setData({ recording: true, error: '' })
     wx.enableAlertBeforeUnload({ message: '录音尚未结束，离开页面会先保存当前录音。' })
   },
@@ -217,7 +225,15 @@ Page({
     const item = visitQueueItems(this.data.visitID).find((value) => value.localID === event.detail.localID)
     if (!item) return
     if (item.assetID) {
-      try { await api.deleteAsset(item.assetID) } catch { /* retrying cleanup is harmless */ }
+      try {
+        await api.deleteAsset(item.assetID)
+      } catch (error) {
+        const converged = error instanceof APIError && (error.statusCode === 404 || error.code === 'asset_state_conflict')
+        if (!converged) {
+          this.setData({ error: error instanceof Error ? error.message : '物料删除失败，请稍后重试' })
+          return
+        }
+      }
     }
     try { await removeSavedFile(item.filePath) } catch { /* file may already be absent */ }
     uploadQueue.remove(item.localID)

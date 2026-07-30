@@ -87,6 +87,20 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadParsesSecurePublicObjectEndpoint(t *testing.T) {
+	setRequiredBaseEnvironment(t)
+	t.Setenv("S3_PUBLIC_ENDPOINT", "files.example.com")
+	t.Setenv("S3_PUBLIC_SECURE", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.S3PublicSecure {
+		t.Fatal("S3PublicSecure = false, want true")
+	}
+}
+
 func TestLoadRequiresProviderConfiguration(t *testing.T) {
 	setRequiredBaseEnvironment(t)
 
