@@ -1,19 +1,22 @@
-<view class="page">
-  <view class="page-head">
-    <text class="page-title">桑榆录</text>
-    <text class="page-meta">工作人员采集与成书工作台</text>
-  </view>
-  <view wx:if="{{loading}}" class="loading">正在载入项目</view>
-  <view wx:elif="{{error}}" class="error" bindtap="loadProjects">{{error}}\n轻触重试</view>
-  <view wx:elif="{{projects.length === 0}}" class="empty">暂无项目</view>
-  <view wx:else>
-    <view class="row" wx:for="{{projects}}" wx:key="id" data-id="{{item.id}}" bindtap="openProject">
-      <view class="row-main">
-        <text class="row-title">{{item.display_name}}</text>
-        <text class="row-subtitle">生于 {{item.birth_year}} 年 · {{item.collection_plan.length}} 项采集任务</text>
-      </view>
-      <text class="status">{{item.state}}</text>
+<view class="page archives">
+  <view class="archive-tools">
+    <view class="search-field">
+      <text class="search-icon">⌕</text>
+      <input value="{{query}}" placeholder="搜索姓名、籍贯或职业" confirm-type="search" bindinput="onSearch" />
     </view>
+    <scroll-view class="filters" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="filters__inner">
+        <button wx:for="{{filters}}" wx:key="value" class="filter {{state === item.value ? 'filter--active' : ''}}" data-value="{{item.value}}" bindtap="selectFilter">{{item.label}}</button>
+      </view>
+    </scroll-view>
   </view>
+  <view wx:if="{{loading}}" class="loading">正在载入档案</view>
+  <empty-state wx:elif="{{error}}" title="档案加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <empty-state wx:elif="{{projects.length === 0}}" title="没有找到档案" detail="可调整搜索条件或建立新档案"></empty-state>
+  <block wx:else>
+    <project-row wx:for="{{projects}}" wx:key="id" project="{{item}}" bind:open="openProject"></project-row>
+    <view wx:if="{{loadingMore}}" class="load-more">正在载入更多</view>
+    <view wx:elif="{{!nextCursor}}" class="list-end">已显示全部档案</view>
+  </block>
 </view>
-<view class="action-bar"><button class="primary" bindtap="createProject">新建老人档案</button></view>
+<action-bar><button class="primary" bindtap="createProject">建立老人档案</button></action-bar>

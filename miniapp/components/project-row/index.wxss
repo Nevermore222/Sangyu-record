@@ -1,0 +1,7 @@
+.project-row { display: flex; align-items: center; min-height: 126rpx; padding: 22rpx 0; border-bottom: 1rpx solid #dfe2df; box-sizing: border-box; }
+.project-row--pressed { background: #f7f8f7; }
+.project-row__main { flex: 1; min-width: 0; }
+.project-row__heading { display: flex; align-items: center; gap: 16rpx; }
+.project-row__name { min-width: 0; color: #252a27; font-size: 30rpx; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.project-row__meta { display: block; margin-top: 10rpx; color: #656b66; font-size: 23rpx; }
+.project-row__action { flex: 0 0 auto; margin-left: 18rpx; color: #7d2f2a; font-size: 24rpx; white-space: nowrap; }

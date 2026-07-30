@@ -1,24 +1,47 @@
-<view class="page">
+<view class="page project-page">
   <view wx:if="{{loading}}" class="loading">正在载入档案</view>
-  <view wx:elif="{{error}}" class="error" bindtap="refresh">{{error}}\n轻触重试</view>
+  <empty-state wx:elif="{{error && !project}}" title="档案加载失败" detail="{{error}}" action-label="重新加载" bind:action="refresh"></empty-state>
   <block wx:elif="{{project}}">
-    <view class="page-head"><text class="page-title">{{project.display_name}}</text><text class="page-meta">{{project.birth_year}} 年生 · {{project.state}}</text></view>
-    <text class="section-title">采集计划</text>
-    <view class="row" wx:for="{{project.collection_plan}}" wx:key="id">
-      <view class="plan-index">{{index + 1}}</view>
-      <view class="row-main"><text class="row-title">{{item.category}}</text><text class="row-subtitle">{{item.prompt}}</text></view>
-      <text class="status">{{item.status}}</text>
-    </view>
-    <block wx:if="{{workflow}}">
-      <text class="section-title">自动处理</text>
-      <view class="stage" wx:for="{{workflow.nodes}}" wx:key="name">
-        <view class="stage-mark {{item.state}}"></view><text class="stage-name">{{item.name}}</text><text class="stage-state">{{item.state}}</text>
+    <view class="project-head">
+      <view class="project-identity">
+        <text class="page-title">{{project.display_name}}</text>
+        <text class="page-meta">{{project.birth_year}} 年生 · {{project.birth_place}} · {{project.primary_occupation || '职业未填写'}}</text>
       </view>
-    </block>
+      <status-tag label="{{project.state === 'completed' ? '已完成' : (project.state === 'needs_material' ? '待补材料' : '进行中')}}" tone="{{project.state === 'completed' ? 'success' : (project.state === 'needs_material' ? 'warning' : 'info')}}"></status-tag>
+    </view>
+    <view class="consent-line"><text>现场授权</text><text class="consent-value">{{project.consent ? (project.consent.confirmed_by === 'elder' ? '老人本人已确认' : '监护人已确认') : '尚未确认'}}</text></view>
+    <progress-steps items="{{project.collection_plan}}"></progress-steps>
+
+    <text class="section-title">采集计划</text>
+    <view class="plan-row" wx:for="{{planItems}}" wx:key="id">
+      <view class="plan-copy">
+        <view class="plan-head"><text class="plan-category">{{item.categoryLabel}}</text><status-tag label="{{item.statusLabel}}" tone="{{item.statusTone}}"></status-tag></view>
+        <text class="plan-prompt">{{item.prompt}}</text>
+        <text wx:if="{{item.gapReason}}" class="plan-gap">缺口：{{item.gapReason}}</text>
+      </view>
+    </view>
+
+    <view class="section-heading"><text class="section-title">走访记录</text><text class="section-count">{{visits.length}} 次</text></view>
+    <empty-state wx:if="{{visits.length === 0}}" title="尚未开始走访"></empty-state>
+    <view class="visit-row" wx:for="{{visits}}" wx:key="id" data-id="{{item.id}}" bindtap="openVisit">
+      <view class="visit-sequence">{{item.sequence}}</view>
+      <view class="visit-copy"><text class="row-title">第 {{item.sequence}} 次走访</text><text class="row-subtitle">{{item.dateLabel}} · {{item.location || '地点未填写'}}</text></view>
+      <status-tag label="{{item.statusLabel}}" tone="{{item.statusTone}}"></status-tag>
+    </view>
+
+    <view wx:if="{{latestAnalysis}}" class="analysis-band">
+      <text class="section-title">最近分析</text>
+      <text class="analysis-summary">{{latestAnalysis.summary}}</text>
+      <text wx:if="{{latestAnalysis.followup_questions.length}}" class="analysis-meta">生成 {{latestAnalysis.followup_questions.length}} 个补采问题</text>
+    </view>
+
+    <view wx:if="{{activeWorkflow}}" class="workflow-line"><view class="workflow-dot"></view><text>回忆录正在自动编写与排版</text></view>
+    <view wx:if="{{artifact}}" class="artifact-row" bindtap="openResult"><view><text class="row-title">回忆录 PDF</text><text class="row-subtitle">第 {{artifact.version}} 版 · 已生成</text></view><text class="artifact-action">打开 ›</text></view>
+    <view wx:if="{{error}}" class="error">{{error}}</view>
   </block>
 </view>
-<view class="action-bar">
-  <button class="secondary" bindtap="collect">采集物料</button>
-  <button wx:if="{{workflow && workflow.state === 'succeeded'}}" class="primary" bindtap="openResult">查看回忆录</button>
-  <button wx:else class="primary" loading="{{processing}}" disabled="{{processing}}" bindtap="startWorkflow">开始自动成书</button>
-</view>
+<action-bar wx:if="{{project}}">
+  <button class="secondary" disabled="{{activeWorkflow}}" bindtap="startVisit">开始新走访</button>
+  <button wx:if="{{artifact && project.state === 'completed'}}" class="primary" bindtap="openResult">查看回忆录</button>
+  <button wx:else class="primary" loading="{{finalizing}}" disabled="{{!readyToFinalize || finalizing}}" bindtap="finalize">确认资料齐备并成书</button>
+</action-bar>

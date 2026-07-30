@@ -19,6 +19,66 @@ export interface Project {
   target_edition?: 'brief' | 'standard' | 'long'
   state: string
   collection_plan: PlanItem[]
+  consent?: Consent
+}
+
+export interface Consent {
+  id: string
+  confirmed_by: 'elder' | 'guardian'
+  confirmation_method: 'onsite'
+  confirmed_at: string
+}
+
+export interface ProjectSummary {
+  id: string
+  display_name: string
+  birth_year: number
+  birth_place?: string
+  long_term_residence?: string
+  primary_occupation?: string
+  target_edition?: 'brief' | 'standard' | 'long'
+  state: string
+  updated_at: string
+}
+
+export interface ProjectPage {
+  items: ProjectSummary[]
+  next_cursor?: string
+}
+
+export interface Dashboard {
+  counts: { collecting: number; needs_material: number; processing: number; completed: number }
+  actionable: ProjectSummary[]
+  recent: ProjectSummary[]
+}
+
+export interface Visit {
+  id: string
+  project_id: string
+  sequence: number
+  visited_at: string
+  location: string
+  notes: string
+  state: string
+  error_code?: string
+  plan_item_ids: string[]
+}
+
+export interface Asset {
+  id: string
+  visit_id?: string
+  kind: 'audio' | 'photo'
+  display_name: string
+  state: 'pending_upload' | 'uploaded'
+}
+
+export interface VisitAnalysis {
+  id: string
+  visit_id: string
+  summary: string
+  covered_items: Array<{ plan_item_id: string; evidence_refs: string[] }>
+  gaps: Array<{ plan_item_id: string; reason: string }>
+  followup_questions: Array<{ plan_item_id: string; question: string }>
 }
 
 export interface CreateProjectInput {
@@ -54,6 +114,13 @@ export interface Artifact {
   version: number
   size_bytes: number
   download_url: string
+}
+
+export interface ListProjectsInput {
+  limit?: number
+  query?: string
+  state?: string
+  cursor?: string
 }
 
 interface RequestOptions {
@@ -144,8 +211,25 @@ export function createAPI({
   }
 
   return {
+    getDashboard: () => call<Dashboard>('GET', '/v1/staff/dashboard'),
+    listProjects: (input: ListProjectsInput = {}) => {
+      const pairs: string[] = []
+      if (input.limit) pairs.push(`limit=${encodeURIComponent(String(input.limit))}`)
+      if (input.query) pairs.push(`query=${encodeURIComponent(input.query)}`)
+      if (input.state) pairs.push(`state=${encodeURIComponent(input.state)}`)
+      if (input.cursor) pairs.push(`cursor=${encodeURIComponent(input.cursor)}`)
+      return call<ProjectPage>('GET', `/v1/staff/projects${pairs.length > 0 ? `?${pairs.join('&')}` : ''}`)
+    },
     createProject: (input: CreateProjectInput) => call<Project>('POST', '/v1/staff/projects', input),
     getProject: (projectID: string) => call<Project>('GET', `/v1/staff/projects/${projectID}`),
+    confirmConsent: (projectID: string, confirmedBy: 'elder' | 'guardian') =>
+      call<Consent>('POST', `/v1/staff/projects/${projectID}/consents`, { confirmed_by: confirmedBy }),
+    listVisits: (projectID: string) =>
+      call<{ items: Visit[] }>('GET', `/v1/staff/projects/${projectID}/visits`),
+    listVisitAssets: (visitID: string) =>
+      call<{ items: Asset[] }>('GET', `/v1/staff/visits/${visitID}/assets`),
+    getVisitAnalysis: (visitID: string) =>
+      call<VisitAnalysis>('GET', `/v1/staff/visits/${visitID}/analysis`),
     initiateAsset: (
       projectID: string,
       input: { kind: 'audio' | 'photo'; filename: string; content_type: string; size_bytes: number }
@@ -158,6 +242,9 @@ export function createAPI({
       call<WorkflowRun>('GET', `/v1/staff/projects/${projectID}/workflow`),
     getLatestArtifact: (projectID: string) =>
       call<Artifact>('GET', `/v1/staff/projects/${projectID}/artifacts/latest`),
+    finalizeProject: (projectID: string) =>
+      call<WorkflowRun>('POST', `/v1/staff/projects/${projectID}:finalize`, { confirm_materials_ready: true }),
+    logout: () => call<void>('POST', '/v1/staff/logout', {}),
     uploadAsset: async (ticket: UploadTicket, filePath: string, contentType: string): Promise<void> => {
       const data = await readFile(filePath)
       const upload = await request({

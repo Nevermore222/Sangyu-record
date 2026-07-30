@@ -1,0 +1,10 @@
+<view wx:if="{{view}}" class="project-row" bindtap="open" hover-class="project-row--pressed">
+  <view class="project-row__main">
+    <view class="project-row__heading">
+      <text class="project-row__name">{{view.display_name}}</text>
+      <status-tag label="{{view.statusLabel}}" tone="{{view.statusTone}}"></status-tag>
+    </view>
+    <text class="project-row__meta">{{view.birth_year}} 年生</text>
+  </view>
+  <text wx:if="{{showAction}}" class="project-row__action">{{view.action}} ›</text>
+</view>

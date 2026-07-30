@@ -1,7 +1,9 @@
 {
   "pages": [
     "pages/login/index",
+    "pages/workbench/index",
     "pages/projects/index",
+    "pages/profile/index",
     "pages/create/index",
     "pages/project/index",
     "pages/upload/index",
@@ -17,6 +19,17 @@
     "status-tag": "/components/status-tag/index",
     "empty-state": "/components/empty-state/index",
     "action-bar": "/components/action-bar/index"
+  },
+  "tabBar": {
+    "color": "#747a75",
+    "selectedColor": "#7d2f2a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/workbench/index", "text": "工作台" },
+      { "pagePath": "pages/projects/index", "text": "档案" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

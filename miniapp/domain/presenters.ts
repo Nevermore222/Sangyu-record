@@ -32,3 +32,55 @@ const statuses: Record<string, StatusPresentation> = {
 export function presentStatus(status: string): StatusPresentation {
   return statuses[status] || { label: '状态待确认', tone: 'neutral' }
 }
+
+interface DashboardProject {
+  id: string
+  display_name: string
+  birth_year: number
+  state: string
+  updated_at: string
+}
+
+interface DashboardInput {
+  counts: { collecting: number; needs_material: number; processing: number; completed: number }
+  actionable: DashboardProject[]
+  recent: DashboardProject[]
+}
+
+export interface ProjectRowPresentation extends DashboardProject {
+  statusLabel: string
+  statusTone: StatusTone
+  action: string
+}
+
+export function presentProjectRow(project: DashboardProject): ProjectRowPresentation {
+  const status = presentStatus(project.state)
+  const action = project.state === 'needs_material'
+    ? '补充采集'
+    : project.state === 'completed'
+      ? '查看成果'
+      : '继续处理'
+  return { ...project, statusLabel: status.label, statusTone: status.tone, action }
+}
+
+export function presentDashboard(input: DashboardInput) {
+  return {
+    counts: input.counts,
+    actionable: input.actionable.map(presentProjectRow),
+    recent: input.recent.map(presentProjectRow)
+  }
+}
+
+const categories: Record<string, string> = {
+  childhood: '童年记忆',
+  education: '求学经历',
+  work: '工作生涯',
+  family: '家庭生活',
+  turning_points: '人生转折',
+  photos: '老照片',
+  occupation: '职业记忆'
+}
+
+export function presentCategory(category: string): string {
+  return categories[category] || '其他记忆'
+}

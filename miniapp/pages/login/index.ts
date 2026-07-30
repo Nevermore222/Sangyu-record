@@ -14,7 +14,7 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       await session.ensure()
-      await wx.reLaunch({ url: '/pages/projects/index' })
+      await wx.reLaunch({ url: '/pages/workbench/index' })
     } catch (error) {
       this.setData({
         loading: false,

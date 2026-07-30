@@ -1,0 +1,12 @@
+.workbench { background: #fff; }
+.count-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 -8rpx 12rpx; padding: 24rpx 0; border-top: 1rpx solid #dfe2df; border-bottom: 1rpx solid #dfe2df; }
+.count-cell { display: flex; flex-direction: column; align-items: center; min-width: 0; border-right: 1rpx solid #e8eae8; }
+.count-cell:last-child { border-right: 0; }
+.count-value { color: #252a27; font-family: "Songti SC", serif; font-size: 44rpx; line-height: 1.2; }
+.count-value--green { color: #315e4c; }
+.count-value--burgundy { color: #7d2f2a; }
+.count-value--muted { color: #747a75; }
+.count-label { margin-top: 8rpx; color: #656b66; font-size: 21rpx; white-space: nowrap; }
+.section-head { margin-top: 16rpx; }
+.section-head--action { display: flex; align-items: center; justify-content: space-between; }
+.section-link { color: #7d2f2a; font-size: 24rpx; }

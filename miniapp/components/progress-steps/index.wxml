@@ -1,0 +1,7 @@
+<view class="progress-steps">
+  <view class="progress-steps__copy">
+    <text>采集进度</text>
+    <text>{{completed}} / {{total}}</text>
+  </view>
+  <view class="progress-steps__track"><view class="progress-steps__fill" style="width: {{percent}}%"></view></view>
+</view>

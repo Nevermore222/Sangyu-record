@@ -1,1 +1,11 @@
-/* Global field styles define this page. */
+.create-page { background: #fff; }
+.step-head { padding: 8rpx 0 12rpx; }
+.step-count { color: #656b66; font-size: 22rpx; }
+.step-track { height: 4rpx; margin-top: 12rpx; background: #e1e4e1; }
+.step-fill { height: 100%; background: #7d2f2a; transition: width 180ms ease; }
+.picker-value { display: flex; align-items: center; justify-content: space-between; min-height: 64rpx; }
+.consent-copy { padding: 28rpx 0 34rpx; border-top: 1rpx solid #dfe2df; border-bottom: 1rpx solid #dfe2df; color: #4f5550; font-size: 27rpx; line-height: 1.8; }
+.consent-options { display: block; margin-top: 24rpx; }
+.consent-option { display: flex; align-items: center; min-height: 126rpx; border-bottom: 1rpx solid #dfe2df; }
+.consent-option radio { margin-right: 20rpx; transform: scale(0.85); }
+.form-error { margin-top: 28rpx; color: #8b3128; font-size: 25rpx; line-height: 1.6; }

@@ -1,34 +1,70 @@
-import type { Project } from '../../services/api'
+import type { ProjectSummary } from '../../services/api'
 import { api } from '../../services/client'
+
+let searchTimer: number | undefined
 
 Page({
   data: {
     loading: true,
+    loadingMore: false,
     error: '',
-    projects: [] as Project[]
+    query: '',
+    state: '',
+    nextCursor: '',
+    projects: [] as ProjectSummary[],
+    filters: [
+      { label: '全部', value: '' },
+      { label: '采集中', value: 'collecting' },
+      { label: '待补材料', value: 'needs_material' },
+      { label: '已完成', value: 'completed' }
+    ]
   },
 
-  onShow() {
-    void this.loadProjects()
+  onLoad() { void this.load(true) },
+  onUnload() { if (searchTimer !== undefined) clearTimeout(searchTimer) },
+  onPullDownRefresh() { void this.load(true).finally(() => wx.stopPullDownRefresh()) },
+  onReachBottom() { if (this.data.nextCursor) void this.load(false) },
+
+  onSearch(event: WechatMiniprogram.Input) {
+    const query = event.detail.value
+    this.setData({ query })
+    if (searchTimer !== undefined) clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => void this.load(true), 320) as unknown as number
   },
 
-  async loadProjects() {
-    this.setData({ loading: true, error: '' })
+  selectFilter(event: WechatMiniprogram.BaseEvent) {
+    this.setData({ state: event.currentTarget.dataset.value as string })
+    void this.load(true)
+  },
+
+  async load(reset: boolean) {
+    if (this.data.loadingMore) return
+    this.setData(reset ? { loading: true, error: '' } : { loadingMore: true, error: '' })
     try {
-      const ids = (wx.getStorageSync('recentProjectIDs') || []) as string[]
-      const projects = await Promise.all(ids.map((id) => api.getProject(id)))
-      this.setData({ projects, loading: false })
+      const page = await api.listProjects({
+        limit: 20,
+        query: this.data.query.trim() || undefined,
+        state: this.data.state || undefined,
+        cursor: reset ? undefined : this.data.nextCursor
+      })
+      this.setData({
+        projects: reset ? page.items : [...this.data.projects, ...page.items],
+        nextCursor: page.next_cursor || '',
+        loading: false,
+        loadingMore: false
+      })
     } catch (error) {
-      this.setData({ error: error instanceof Error ? error.message : '项目加载失败', loading: false })
+      this.setData({
+        loading: false,
+        loadingMore: false,
+        error: error instanceof Error ? error.message : '档案加载失败'
+      })
     }
   },
 
-  createProject() {
-    void wx.navigateTo({ url: '/pages/create/index' })
+  openProject(event: WechatMiniprogram.CustomEvent<{ id: string }>) {
+    void wx.navigateTo({ url: `/pages/project/index?id=${event.detail.id}` })
   },
 
-  openProject(event: WechatMiniprogram.BaseEvent) {
-    const id = event.currentTarget.dataset.id as string
-    void wx.navigateTo({ url: `/pages/project/index?id=${id}` })
-  }
+  createProject() { void wx.navigateTo({ url: '/pages/create/index' }) }
 })

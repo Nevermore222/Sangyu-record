@@ -1,0 +1,12 @@
+<view class="page profile">
+  <view class="profile-head">
+    <view class="profile-mark">{{staffInitial}}</view>
+    <view class="profile-copy">
+      <text class="profile-name">{{staff.display_name || '工作人员'}}</text>
+      <text class="profile-team">{{staff.team_name || '口述史采集组'}}</text>
+    </view>
+  </view>
+  <view class="profile-row"><text>账号状态</text><text class="profile-value">已登录</text></view>
+  <view class="profile-row"><text>服务环境</text><text class="profile-value">桑榆录工作端</text></view>
+</view>
+<action-bar><button class="secondary" loading="{{loggingOut}}" disabled="{{loggingOut}}" bindtap="logout">退出登录</button></action-bar>

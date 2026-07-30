@@ -1,11 +1,31 @@
-<view class="page">
-  <view class="page-head"><text class="page-title">建立人生档案</text><text class="page-meta">填写最少信息，系统将生成首轮采集计划</text></view>
-  <view class="field"><text class="field-label">姓名或项目代号</text><input data-field="display_name" bindinput="onInput" placeholder="例如：林奶奶" /></view>
-  <view class="field"><text class="field-label">出生年份</text><input data-field="birth_year" bindinput="onInput" type="number" placeholder="例如：1948" /></view>
-  <view class="field"><text class="field-label">出生地</text><input data-field="birth_place" bindinput="onInput" placeholder="省、市或县" /></view>
-  <view class="field"><text class="field-label">长期生活地区</text><input data-field="long_term_residence" bindinput="onInput" placeholder="主要生活地区" /></view>
-  <view class="field"><text class="field-label">主要职业</text><input data-field="primary_occupation" bindinput="onInput" placeholder="可留空" /></view>
-  <view class="field"><text class="field-label">目标体量</text><picker range="{{editions}}" value="{{editionIndex}}" bindchange="onEdition">{{editions[editionIndex]}}</picker></view>
-  <view wx:if="{{error}}" class="error">{{error}}</view>
+<view class="page create-page">
+  <view class="step-head">
+    <text class="step-count">{{step}} / 2</text>
+    <view class="step-track"><view class="step-fill" style="width: {{step * 50}}%"></view></view>
+  </view>
+  <block wx:if="{{step === 1}}">
+    <view class="page-head"><text class="page-title">建立人生档案</text><text class="page-meta">填写老人基本信息</text></view>
+    <view class="field"><text class="field-label">姓名或档案代号</text><input value="{{form.display_name}}" data-field="display_name" bindinput="onInput" placeholder="例如：林奶奶" /></view>
+    <view class="field"><text class="field-label">出生年份</text><input value="{{form.birth_year}}" data-field="birth_year" bindinput="onInput" type="number" placeholder="例如：1948" /></view>
+    <view class="field"><text class="field-label">出生地</text><input value="{{form.birth_place}}" data-field="birth_place" bindinput="onInput" placeholder="省、市或县" /></view>
+    <view class="field"><text class="field-label">长期生活地区</text><input value="{{form.long_term_residence}}" data-field="long_term_residence" bindinput="onInput" placeholder="主要生活地区" /></view>
+    <view class="field"><text class="field-label">主要职业</text><input value="{{form.primary_occupation}}" data-field="primary_occupation" bindinput="onInput" placeholder="可留空" /></view>
+    <view class="field"><text class="field-label">目标体量</text><picker range="{{editions}}" value="{{editionIndex}}" bindchange="onEdition"><view class="picker-value">{{editions[editionIndex]}} <text>›</text></view></picker></view>
+  </block>
+  <block wx:else>
+    <view class="page-head"><text class="page-title">确认现场授权</text><text class="page-meta">由老人本人或监护人在场确认</text></view>
+    <view class="consent-copy">
+      <text>我已向当事人说明录音、照片、文字整理与回忆录制作的用途，并获得现场同意。</text>
+    </view>
+    <radio-group class="consent-options" bindchange="onConsent">
+      <label class="consent-option"><radio value="elder" checked="{{confirmedBy === 'elder'}}" color="#315e4c" /><view><text class="row-title">老人本人确认</text><text class="row-subtitle">当事人已理解并同意采集与制作</text></view></label>
+      <label class="consent-option"><radio value="guardian" checked="{{confirmedBy === 'guardian'}}" color="#315e4c" /><view><text class="row-title">监护人确认</text><text class="row-subtitle">由合法监护人代为现场确认</text></view></label>
+    </radio-group>
+  </block>
+  <view wx:if="{{error}}" class="form-error">{{error}}</view>
 </view>
-<view class="action-bar"><button class="primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">生成采集计划</button></view>
+<action-bar>
+  <button wx:if="{{step === 2}}" class="secondary" disabled="{{submitting}}" bindtap="previousStep">上一步</button>
+  <button wx:if="{{step === 1}}" class="primary" bindtap="nextStep">下一步</button>
+  <button wx:else class="primary" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">确认授权并建档</button>
+</action-bar>

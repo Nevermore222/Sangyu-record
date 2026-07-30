@@ -1,0 +1,25 @@
+<view class="page workbench">
+  <view class="page-head">
+    <text class="page-title">今日工作</text>
+    <text class="page-meta">按材料缺口与处理状态排序</text>
+  </view>
+  <view wx:if="{{loading}}" class="loading">正在载入工作台</view>
+  <empty-state wx:elif="{{error}}" title="工作台加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
+  <block wx:else>
+    <view class="count-band">
+      <view class="count-cell" wx:for="{{counts}}" wx:key="label">
+        <text class="count-value count-value--{{item.tone}}">{{item.value}}</text>
+        <text class="count-label">{{item.label}}</text>
+      </view>
+    </view>
+    <view class="section-head"><text class="section-title">优先处理</text></view>
+    <empty-state wx:if="{{actionable.length === 0}}" title="当前没有待办档案" detail="新的采集任务会显示在这里"></empty-state>
+    <project-row wx:for="{{actionable}}" wx:key="id" project="{{item}}" bind:open="openProject"></project-row>
+    <view class="section-head section-head--action">
+      <text class="section-title">最近档案</text>
+      <text class="section-link" bindtap="openArchives">查看全部</text>
+    </view>
+    <project-row wx:for="{{recent}}" wx:key="id" project="{{item}}" show-action="{{false}}" bind:open="openProject"></project-row>
+  </block>
+</view>
+<action-bar><button class="primary" bindtap="createProject">建立老人档案</button></action-bar>

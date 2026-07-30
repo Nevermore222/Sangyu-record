@@ -1,0 +1,8 @@
+.profile { background: #fff; }
+.profile-head { display: flex; align-items: center; padding: 36rpx 0 44rpx; border-bottom: 1rpx solid #dfe2df; }
+.profile-mark { display: flex; align-items: center; justify-content: center; width: 92rpx; height: 92rpx; border-radius: 50%; background: #315e4c; color: #fff; font-family: "Songti SC", serif; font-size: 38rpx; }
+.profile-copy { margin-left: 24rpx; }
+.profile-name { display: block; font-size: 34rpx; font-weight: 600; }
+.profile-team { display: block; margin-top: 8rpx; color: #656b66; font-size: 24rpx; }
+.profile-row { display: flex; justify-content: space-between; min-height: 104rpx; align-items: center; border-bottom: 1rpx solid #dfe2df; font-size: 27rpx; }
+.profile-value { color: #656b66; }

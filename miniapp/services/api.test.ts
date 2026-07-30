@@ -80,4 +80,16 @@ describe('API client', () => {
       header: expect.objectContaining({ Authorization: 'Bearer fresh-token' })
     }))
   })
+
+  it('lists projects from the server with encoded filters', async () => {
+    const request = vi.fn().mockResolvedValue({ statusCode: 200, data: { items: [], next_cursor: '' } })
+    const api = createAPI({ baseURL: 'http://localhost:8080', request })
+
+    await api.listProjects({ limit: 20, query: '林 奶奶', state: 'collecting' })
+
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+      method: 'GET',
+      url: 'http://localhost:8080/v1/staff/projects?limit=20&query=%E6%9E%97%20%E5%A5%B6%E5%A5%B6&state=collecting'
+    }))
+  })
 })
