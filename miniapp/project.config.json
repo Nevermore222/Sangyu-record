@@ -30,7 +30,12 @@
   },
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "suffix",
+        "value": ".test.js"
+      }
+    ],
     "include": []
   },
   "editorSetting": {}

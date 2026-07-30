@@ -10,4 +10,11 @@ describe('WeChat DevTools project configuration', () => {
   it('enables the TypeScript compiler plugin for TypeScript pages', () => {
     expect(projectConfig.setting.useCompilerPlugins).toContain('typescript')
   })
+
+  it('excludes test files from upload packages', () => {
+    expect(projectConfig.packOptions.ignore).toContainEqual({
+      type: 'suffix',
+      value: '.test.js'
+    })
+  })
 })
