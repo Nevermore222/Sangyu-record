@@ -1,6 +1,8 @@
 .env
 /project.config.json
 /project.private.config.json
+miniapp/miniprogram_npm/
+miniapp/project.private.config.json
 deploy/production/.env.production
 .idea/
 .vscode/
