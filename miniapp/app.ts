@@ -1,4 +1,4 @@
-import { session } from './services/client'
+import { session } from './services/session-client'
 
 App({
   globalData: {
