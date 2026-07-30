@@ -52,8 +52,13 @@ function validateSubmission(value) {
     typeof value.deadline === 'string'
 }
 
-function outputFor(taskType) {
-  switch (taskType) {
+function outputFor(taskType, input = {}) {
+	const planItemIDs = Array.isArray(input.selected_plan_items)
+		? input.selected_plan_items.map((item) => item.id).filter(Boolean)
+		: []
+	const primaryPlanItemID = planItemIDs[0] ?? 'p1'
+	const remainingPlanItemIDs = planItemIDs.slice(1)
+	switch (taskType) {
     case 'audio_transcription':
       return { segments: [{ start_seconds: 12, end_seconds: 20, text: '\u6211\u57281978\u5e74\u8fdb\u5165\u4e86\u5f53\u5730\u7eba\u7ec7\u5382\u3002', source_ref: 'audio-fixture#12-20' }] }
     case 'speaker_diarization':
@@ -64,10 +69,17 @@ function outputFor(taskType) {
       return { description: '\u4e00\u5f20\u5de5\u4f5c\u65f6\u671f\u7684\u96c6\u4f53\u7167\u7247', source_ref: 'photo-fixture#image-1', confidence: 'inferred' }
     case 'collection_plan':
       return { items: [{ kind: 'audio', topic: 'childhood' }] }
-    case 'material_assessment':
-      return { complete: true, missing: [] }
-    case 'followup_plan':
-      return { questions: ['What happened next?'] }
+		case 'material_assessment':
+			return {
+				complete: remainingPlanItemIDs.length === 0,
+				covered_items: [{ plan_item_id: primaryPlanItemID, evidence_refs: ['audio-fixture#12-20'] }],
+				gaps: remainingPlanItemIDs.map((id) => ({ plan_item_id: id, reason: 'missing detail' }))
+			}
+		case 'followup_plan':
+			return {
+				summary: 'This visit captured one core memory and identified the next interview focus.',
+				questions: [{ plan_item_id: remainingPlanItemIDs[0] ?? primaryPlanItemID, question: 'What happened next?' }]
+			}
     case 'memoir_positioning':
       return { voice: 'first_person', tone: 'warm' }
     case 'timeline_builder':
@@ -120,7 +132,7 @@ function snapshot(job, completionDelayMs) {
       error_message: `mock scenario ${scenario}`
     }
   }
-  const output = scenario === 'malformed_output' ? { unexpected: true } : outputFor(job.request.task_type)
+	const output = scenario === 'malformed_output' ? { unexpected: true } : outputFor(job.request.task_type, job.request.input)
   return { request_id: job.request.request_id, provider_job_id: job.id, state: 'succeeded', output }
 }
 

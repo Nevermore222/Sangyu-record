@@ -118,3 +118,24 @@ test('accepts every canonical task type', async () => {
     }
   })
 })
+
+test('returns normalized visit analysis structures', async () => {
+	const app = createApp({ completionDelayMs: 1 })
+	await usingServer(app, async (baseURL) => {
+		const assessmentRequest = validSubmission('material_assessment')
+		assessmentRequest.input.selected_plan_items = [{ id: 'plan-1' }, { id: 'plan-2' }]
+		const assessment = await postJSON(`${baseURL}/v1/jobs`, assessmentRequest)
+		await new Promise((resolve) => setTimeout(resolve, 5))
+		const assessmentResult = await getJSON(`${baseURL}/v1/jobs/${assessment.body.provider_job_id}`)
+		assert.equal(assessmentResult.body.output.covered_items[0].plan_item_id, 'plan-1')
+		assert.equal(assessmentResult.body.output.gaps[0].plan_item_id, 'plan-2')
+
+		const followupRequest = validSubmission('followup_plan')
+		followupRequest.idempotency_key = 'visit-followup-structure'
+		followupRequest.input.selected_plan_items = [{ id: 'plan-1' }]
+		const followup = await postJSON(`${baseURL}/v1/jobs`, followupRequest)
+		await new Promise((resolve) => setTimeout(resolve, 5))
+		const followupResult = await getJSON(`${baseURL}/v1/jobs/${followup.body.provider_job_id}`)
+		assert.equal(followupResult.body.output.questions[0].plan_item_id, 'plan-1')
+	})
+})

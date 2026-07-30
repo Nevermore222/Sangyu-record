@@ -96,7 +96,8 @@ func (r *PostgresRepository) get(ctx context.Context, id, ownerStaffID uuid.UUID
 	detail.State = State(state)
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, project_id, category, prompt, required, status, position, created_at
+		SELECT id, project_id, category, prompt, required, status,
+		       COALESCE(gap_reason, ''), position, created_at
 		FROM collection_plan_items
 		WHERE project_id = $1
 		ORDER BY position`, id)
@@ -110,7 +111,7 @@ func (r *PostgresRepository) get(ctx context.Context, id, ownerStaffID uuid.UUID
 		var status string
 		if err := rows.Scan(
 			&item.ID, &item.ProjectID, &item.Category, &item.Prompt,
-			&item.Required, &status, &item.Position, &item.CreatedAt,
+			&item.Required, &status, &item.GapReason, &item.Position, &item.CreatedAt,
 		); err != nil {
 			return ProjectDetail{}, err
 		}

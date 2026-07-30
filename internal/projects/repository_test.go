@@ -54,6 +54,20 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 			t.Fatalf("plan position = %d, want %d", item.Position, index)
 		}
 	}
+
+	gapReason := "missing a specific date"
+	if _, err := pool.Exec(ctx, `
+		UPDATE collection_plan_items SET status='insufficient', gap_reason=$2
+		WHERE id=$1`, created.CollectionPlan[0].ID, gapReason); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err = service.Get(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.CollectionPlan[0].GapReason != gapReason {
+		t.Fatalf("gap reason = %q, want %q", loaded.CollectionPlan[0].GapReason, gapReason)
+	}
 }
 
 func TestPostgresRepositoryListsOnlyOwnedProjectsWithCursor(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type Transcript struct {
@@ -30,6 +31,32 @@ type KnowledgeEntry struct {
 	Region      string `json:"region"`
 	Confidence  string `json:"confidence"`
 	License     string `json:"license"`
+}
+
+type MaterialAssessment struct {
+	Complete     bool          `json:"complete"`
+	CoveredItems []CoveredItem `json:"covered_items"`
+	Gaps         []MaterialGap `json:"gaps"`
+}
+
+type CoveredItem struct {
+	PlanItemID   string   `json:"plan_item_id"`
+	EvidenceRefs []string `json:"evidence_refs"`
+}
+
+type MaterialGap struct {
+	PlanItemID string `json:"plan_item_id"`
+	Reason     string `json:"reason"`
+}
+
+type FollowupPlan struct {
+	Summary   string             `json:"summary"`
+	Questions []FollowupQuestion `json:"questions"`
+}
+
+type FollowupQuestion struct {
+	PlanItemID string `json:"plan_item_id"`
+	Question   string `json:"question"`
 }
 
 func Normalize(task TaskType, raw json.RawMessage) (json.RawMessage, error) {
@@ -64,6 +91,36 @@ func Normalize(task TaskType, raw json.RawMessage) (json.RawMessage, error) {
 		}
 		if err := json.Unmarshal(raw, &value); err != nil || value.Description == "" || value.SourceRef == "" {
 			return nil, fmt.Errorf("%w: photo result is incomplete", ErrInvalidOutput)
+		}
+	case TaskMaterialAssessment:
+		var value MaterialAssessment
+		if err := json.Unmarshal(raw, &value); err != nil || len(value.CoveredItems)+len(value.Gaps) == 0 {
+			return nil, fmt.Errorf("%w: material assessment is empty", ErrInvalidOutput)
+		}
+		for _, item := range value.CoveredItems {
+			if strings.TrimSpace(item.PlanItemID) == "" || len(item.EvidenceRefs) == 0 {
+				return nil, fmt.Errorf("%w: covered item has no evidence", ErrInvalidOutput)
+			}
+			for _, evidence := range item.EvidenceRefs {
+				if strings.TrimSpace(evidence) == "" {
+					return nil, fmt.Errorf("%w: covered item evidence is empty", ErrInvalidOutput)
+				}
+			}
+		}
+		for _, gap := range value.Gaps {
+			if strings.TrimSpace(gap.PlanItemID) == "" || strings.TrimSpace(gap.Reason) == "" {
+				return nil, fmt.Errorf("%w: material gap is incomplete", ErrInvalidOutput)
+			}
+		}
+	case TaskFollowupPlan:
+		var value FollowupPlan
+		if err := json.Unmarshal(raw, &value); err != nil || strings.TrimSpace(value.Summary) == "" || len(value.Questions) == 0 {
+			return nil, fmt.Errorf("%w: follow-up plan is empty", ErrInvalidOutput)
+		}
+		for _, question := range value.Questions {
+			if strings.TrimSpace(question.Question) == "" {
+				return nil, fmt.Errorf("%w: follow-up question is empty", ErrInvalidOutput)
+			}
 		}
 	case TaskTimelineBuilder:
 		var value struct {

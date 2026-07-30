@@ -60,6 +60,7 @@ type PlanItem struct {
 	Prompt    string         `json:"prompt"`
 	Required  bool           `json:"required"`
 	Status    PlanItemStatus `json:"status"`
+	GapReason string         `json:"gap_reason,omitempty"`
 	Position  int            `json:"position"`
 	CreatedAt time.Time      `json:"created_at"`
 }

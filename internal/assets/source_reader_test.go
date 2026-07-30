@@ -20,6 +20,12 @@ func (r *fakeSourceAssetRepository) ListUploadedByKind(_ context.Context, projec
 	return r.assets, nil
 }
 
+func (r *fakeSourceAssetRepository) ListUploadedByVisitAndKind(_ context.Context, _ uuid.UUID, kind Kind) ([]Asset, error) {
+	r.projectID = uuid.Nil
+	r.kind = kind
+	return r.assets, nil
+}
+
 type fakeSourceURLStore struct {
 	keys   []string
 	expiry time.Duration

@@ -12,6 +12,23 @@ const sourceURLTTL = 15 * time.Minute
 
 type SourceAssetRepository interface {
 	ListUploadedByKind(context.Context, uuid.UUID, Kind) ([]Asset, error)
+	ListUploadedByVisitAndKind(context.Context, uuid.UUID, Kind) ([]Asset, error)
+}
+
+func (r *SourceReader) URLsByVisit(ctx context.Context, visitID uuid.UUID, kind Kind) ([]string, error) {
+	items, err := r.repo.ListUploadedByVisitAndKind(ctx, visitID, kind)
+	if err != nil {
+		return nil, err
+	}
+	urls := make([]string, 0, len(items))
+	for _, asset := range items {
+		signed, err := r.store.PresignGet(ctx, r.bucket, asset.ObjectKey, sourceURLTTL)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, signed.String())
+	}
+	return urls, nil
 }
 
 type SourceURLStore interface {

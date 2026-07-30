@@ -20,6 +20,7 @@ import (
 	"github.com/nevermore222/sangyu-record/internal/providerjobs"
 	"github.com/nevermore222/sangyu-record/internal/providers"
 	"github.com/nevermore222/sangyu-record/internal/staff"
+	"github.com/nevermore222/sangyu-record/internal/visitanalysis"
 	"github.com/nevermore222/sangyu-record/internal/visits"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
@@ -112,6 +113,9 @@ func main() {
 	workflowRepo := workflow.NewPostgresRepository(pool)
 	workflowService := workflow.NewService(workflowRepo, workflowQueue)
 	workflowHandler := workflow.NewHandler(workflowService)
+	visitAnalysisRepo := visitanalysis.NewPostgresRepository(pool)
+	visitAnalysisService := visitanalysis.NewService(visitAnalysisRepo, visitService, workflowService, workflowQueue)
+	visitAnalysisHandler := visitanalysis.NewHandler(visitAnalysisService)
 	bookRepo := book.NewPostgresRepository(pool)
 	artifactStore := book.NewMinioArtifactStore(objectClient, publicObjectClient)
 	bookHandler := book.NewHandler(book.NewCatalog(bookRepo, artifactStore, cfg.S3Bucket))
@@ -126,6 +130,7 @@ func main() {
 				staffHandler.RegisterStaff(router)
 				projectHandler.Register(router)
 				visitHandler.Register(router)
+				visitAnalysisHandler.Register(router)
 				assetHandler.Register(router)
 				workflowHandler.Register(router)
 				bookHandler.Register(router)

@@ -14,6 +14,7 @@ import (
 	"github.com/nevermore222/sangyu-record/internal/platform"
 	"github.com/nevermore222/sangyu-record/internal/providerjobs"
 	"github.com/nevermore222/sangyu-record/internal/providers"
+	"github.com/nevermore222/sangyu-record/internal/visitanalysis"
 	"github.com/nevermore222/sangyu-record/internal/workflow"
 )
 
@@ -71,6 +72,16 @@ func main() {
 	artifactStore := book.NewMinioArtifactStore(objectClient, objectClient)
 	renderer := book.NewService(book.NewChromiumEngine(cfg.ChromiumURL), artifactStore, bookRepo, cfg.S3Bucket)
 	processors := workflow.ProviderProcessors(providerJobService, sourceReader, cfg.ProviderCallbackBaseURL)
+	visitAnalysisRepo := visitanalysis.NewPostgresRepository(pool)
+	for node, processor := range visitanalysis.ProviderProcessors(
+		providerJobService,
+		visitAnalysisRepo,
+		sourceReader,
+		cfg.ProviderCallbackBaseURL,
+	) {
+		processors[node] = processor
+	}
+	processors[workflow.NodeVisitPersistAnalysis] = visitanalysis.NewPersistProcessor(visitAnalysisRepo)
 	processors[workflow.NodeRenderPDF] = book.NewWorkflowProcessor(bookRepo, renderer)
 	worker := workflow.NewWorker(repo, processors, queue, providerJobService, cfg.ProviderPollInterval)
 	mux := asynq.NewServeMux()

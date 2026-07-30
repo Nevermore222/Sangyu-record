@@ -48,6 +48,25 @@ func TestNormalizeFoundationTaskOutputs(t *testing.T) {
 	}
 }
 
+func TestNormalizeMaterialAssessment(t *testing.T) {
+	raw := json.RawMessage(`{
+		"complete":false,
+		"covered_items":[{"plan_item_id":"p1","evidence_refs":["audio#1-5"]}],
+		"gaps":[{"plan_item_id":"p2","reason":"missing detail"}]
+	}`)
+	normalized, err := Normalize(TaskMaterialAssessment, raw)
+	if err != nil || !json.Valid(normalized) {
+		t.Fatalf("normalized=%s err=%v", normalized, err)
+	}
+}
+
+func TestNormalizeFollowupPlanRejectsEmptyQuestions(t *testing.T) {
+	_, err := Normalize(TaskFollowupPlan, json.RawMessage(`{"summary":"More detail is needed","questions":[]}`))
+	if !errors.Is(err, ErrInvalidOutput) {
+		t.Fatalf("err = %v, want ErrInvalidOutput", err)
+	}
+}
+
 type providersTask = TaskType
 
 type noOpProvider struct{}
