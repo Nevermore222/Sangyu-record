@@ -1,0 +1,6 @@
+<view class="empty-state">
+  <view class="empty-state__mark" aria-hidden="true">—</view>
+  <text class="empty-state__title">{{title}}</text>
+  <text wx:if="{{detail}}" class="empty-state__detail">{{detail}}</text>
+  <button wx:if="{{actionLabel}}" class="empty-state__action" bindtap="handleAction">{{actionLabel}}</button>
+</view>

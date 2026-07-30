@@ -1,0 +1,14 @@
+<view class="login-page">
+  <view class="login-brand">
+    <text class="login-name">桑榆录</text>
+    <text class="login-entry">工作人员入口</text>
+  </view>
+  <view class="login-state">
+    <view wx:if="{{loading}}" class="login-indicator"></view>
+    <text wx:if="{{loading}}">正在核验身份</text>
+    <block wx:else>
+      <text class="login-error">{{error}}</text>
+      <button class="login-retry" bindtap="login">重新登录</button>
+    </block>
+  </view>
+</view>

@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/login/index",
     "pages/projects/index",
     "pages/create/index",
     "pages/project/index",
@@ -10,7 +11,12 @@
     "navigationBarTitleText": "桑榆录",
     "navigationBarBackgroundColor": "#f7f5f0",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f7f5f0"
+    "backgroundColor": "#f4f5f3"
+  },
+  "usingComponents": {
+    "status-tag": "/components/status-tag/index",
+    "empty-state": "/components/empty-state/index",
+    "action-bar": "/components/action-bar/index"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

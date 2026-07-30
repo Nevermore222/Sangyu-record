@@ -1,0 +1,28 @@
+.login-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
+  padding: calc(112rpx + env(safe-area-inset-top)) 48rpx calc(72rpx + env(safe-area-inset-bottom));
+  background: #f4f5f3;
+  box-sizing: border-box;
+}
+
+.login-brand { display: flex; flex-direction: column; }
+.login-name { color: #222724; font-family: "Songti SC", "STSong", serif; font-size: 76rpx; font-weight: 600; line-height: 1.2; }
+.login-entry { margin-top: 18rpx; color: #7d2f2a; font-size: 26rpx; }
+.login-state { min-height: 140rpx; color: #656b66; font-size: 26rpx; }
+
+.login-indicator {
+  width: 34rpx;
+  height: 34rpx;
+  margin-bottom: 20rpx;
+  border: 3rpx solid #c8ccc9;
+  border-top-color: #315e4c;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.login-error { display: block; color: #8b3128; }
+.login-retry { width: 240rpx; height: 80rpx; margin: 28rpx 0 0; border-radius: 6rpx; background: #222724; color: #fff; font-size: 26rpx; line-height: 80rpx; }
+@keyframes spin { to { transform: rotate(360deg); } }

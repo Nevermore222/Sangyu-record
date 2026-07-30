@@ -52,4 +52,32 @@ describe('API client', () => {
       data: { sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' }
     }))
   })
+
+  it('refreshes an expired session once and replays the request', async () => {
+    let token = 'expired-token'
+    const session = {
+      getToken: () => token,
+      ensure: vi.fn(async () => token),
+      refresh: vi.fn(async () => {
+        token = 'fresh-token'
+        return token
+      }),
+      clear: vi.fn()
+    }
+    const request = vi.fn()
+      .mockResolvedValueOnce({ statusCode: 401, data: { error: { code: 'staff_unauthorized' } } })
+      .mockResolvedValueOnce({ statusCode: 200, data: { id: 'project-1', collection_plan: [] } })
+    const api = createAPI({ baseURL: 'http://localhost:8080', request, session })
+
+    const project = await api.getProject('project-1')
+
+    expect(project.id).toBe('project-1')
+    expect(session.refresh).toHaveBeenCalledTimes(1)
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      header: expect.objectContaining({ Authorization: 'Bearer expired-token' })
+    }))
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      header: expect.objectContaining({ Authorization: 'Bearer fresh-token' })
+    }))
+  })
 })

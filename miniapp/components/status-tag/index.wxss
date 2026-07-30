@@ -1,0 +1,19 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44rpx;
+  padding: 0 14rpx;
+  border: 1rpx solid #d9dcd8;
+  border-radius: 6rpx;
+  background: #f4f5f3;
+  color: #5d625e;
+  font-size: 22rpx;
+  line-height: 1;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.tag--info { border-color: #c8d3ce; background: #eef3f0; color: #315e4c; }
+.tag--warning { border-color: #dfcaa9; background: #fbf5e9; color: #785422; }
+.tag--danger { border-color: #dab9b5; background: #f9eeee; color: #8b3128; }
+.tag--success { border-color: #bdd2c6; background: #edf5f0; color: #286047; }

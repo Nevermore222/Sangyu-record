@@ -1,0 +1,14 @@
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  gap: 20rpx;
+  min-height: 128rpx;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #dfe2df;
+  background: rgba(255, 255, 255, 0.97);
+  box-sizing: border-box;
+}
