@@ -7,6 +7,10 @@ const projectConfig = JSON.parse(
 )
 
 describe('WeChat DevTools project configuration', () => {
+  it('targets the registered production mini program', () => {
+    expect(projectConfig.appid).toBe('wx336e7a90d023878f')
+  })
+
   it('enables the TypeScript compiler plugin for TypeScript pages', () => {
     expect(projectConfig.setting.useCompilerPlugins).toContain('typescript')
   })

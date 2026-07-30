@@ -1,5 +1,5 @@
 {
-  "appid": "wx2c0fb064aa552e7c",
+  "appid": "wx336e7a90d023878f",
   "compileType": "miniprogram",
   "miniprogramRoot": "./",
   "projectname": "sangyu-record",
@@ -18,7 +18,9 @@
     "minifyWXML": true,
     "localPlugins": false,
     "disableUseStrict": false,
-    "useCompilerPlugins": ["typescript"],
+    "useCompilerPlugins": [
+      "typescript"
+    ],
     "condition": false,
     "swc": false,
     "disableSWC": true,
