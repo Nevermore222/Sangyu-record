@@ -111,7 +111,7 @@ func main() {
 		providerjobs.NewCallbackVerifier([]byte(cfg.ProviderCallbackSecret), 5*time.Minute, nil),
 	)
 	workflowRepo := workflow.NewPostgresRepository(pool)
-	workflowService := workflow.NewService(workflowRepo, workflowQueue)
+	workflowService := workflow.NewServiceWithConfig(workflowRepo, workflowQueue, cfg.AuthMode == "dev")
 	workflowHandler := workflow.NewHandler(workflowService)
 	visitAnalysisRepo := visitanalysis.NewPostgresRepository(pool)
 	visitAnalysisService := visitanalysis.NewService(visitAnalysisRepo, visitService, workflowService, workflowQueue)

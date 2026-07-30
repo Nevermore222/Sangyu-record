@@ -8,13 +8,17 @@ import (
 )
 
 var (
-	ErrProcessorMissing    = errors.New("workflow processor is not registered")
-	ErrRendererUnavailable = errors.New("renderer is not available")
-	ErrInsufficientAssets  = errors.New("workflow requires uploaded audio and photo assets")
-	ErrRunNotFound         = errors.New("workflow run not found")
-	ErrNodeNotFound        = errors.New("workflow node not found")
-	ErrSequenceEmpty       = errors.New("workflow node sequence is empty")
-	ErrInvalidRun          = errors.New("workflow run is invalid")
+	ErrProcessorMissing     = errors.New("workflow processor is not registered")
+	ErrRendererUnavailable  = errors.New("renderer is not available")
+	ErrInsufficientAssets   = errors.New("workflow requires uploaded audio and photo assets")
+	ErrRunNotFound          = errors.New("workflow run not found")
+	ErrNodeNotFound         = errors.New("workflow node not found")
+	ErrSequenceEmpty        = errors.New("workflow node sequence is empty")
+	ErrInvalidRun           = errors.New("workflow run is invalid")
+	ErrConfirmationRequired = errors.New("finalization requires explicit material confirmation")
+	ErrConsentRequired      = errors.New("project consent is required before finalization")
+	ErrDraftVisitExists     = errors.New("project has an unfinished draft visit")
+	ErrProjectNotFound      = errors.New("project was not found")
 )
 
 type RunKind string
@@ -64,6 +68,17 @@ type CreateRunInput struct {
 	VisitID   uuid.UUID
 	Kind      RunKind
 	Nodes     []NodeName
+}
+
+type FinalizeInput struct {
+	ConfirmMaterialsReady bool `json:"confirm_materials_ready"`
+}
+
+type FinalizeBookRequest struct {
+	ProjectID      uuid.UUID
+	StaffID        uuid.UUID
+	IncludeUnowned bool
+	Nodes          []NodeName
 }
 
 type NodeState string
