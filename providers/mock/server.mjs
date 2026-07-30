@@ -143,6 +143,11 @@ export function createApp({ completionDelayMs = 20 } = {}) {
   return createServer(async (request, response) => {
     const url = new URL(request.url, 'http://mock-provider')
     try {
+      if (request.method === 'GET' && url.pathname === '/healthz') {
+        send(response, 200, { status: 'ok' })
+        return
+      }
+
       if (request.method === 'POST' && url.pathname === '/v1/jobs') {
         const submission = await readJSON(request)
         if (!validateSubmission(submission)) {

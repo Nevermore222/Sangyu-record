@@ -44,6 +44,15 @@ function validSubmission(taskType) {
   }
 }
 
+test('reports readiness for container health checks', async () => {
+  const app = createApp()
+  await usingServer(app, async (baseURL) => {
+    const result = await getJSON(`${baseURL}/healthz`)
+    assert.equal(result.status, 200)
+    assert.deepEqual(result.body, { status: 'ok' })
+  })
+})
+
 test('runs a canonical asynchronous provider job', async () => {
   const app = createApp({ completionDelayMs: 5 })
   await usingServer(app, async (baseURL) => {

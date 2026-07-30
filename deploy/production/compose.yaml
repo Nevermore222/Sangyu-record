@@ -22,7 +22,7 @@ x-app-environment: &app-environment
   PROVIDER_CALLBACK_BASE_URL: https://${API_DOMAIN}
   PROVIDER_CALLBACK_SECRET: ${PROVIDER_CALLBACK_SECRET}
   PROVIDER_POLL_INTERVAL: ${PROVIDER_POLL_INTERVAL:-5s}
-  AUTH_MODE: wechat
+  AUTH_MODE: ${AUTH_MODE:-wechat}
   SESSION_SECRET: ${SESSION_SECRET}
   SESSION_TTL: ${SESSION_TTL:-12h}
   WECHAT_APP_ID: ${WECHAT_APP_ID}
@@ -30,6 +30,19 @@ x-app-environment: &app-environment
   STAFF_OPENID_ALLOWLIST: ${STAFF_OPENID_ALLOWLIST}
 
 services:
+  mock-provider:
+    profiles: [mock]
+    build:
+      context: ../..
+      dockerfile: providers/mock/Dockerfile
+    restart: unless-stopped
+    networks: [outbound]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
