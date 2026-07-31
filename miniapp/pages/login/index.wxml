@@ -1,7 +1,12 @@
 <view class="login-page">
+  <image class="login-backdrop" src="/assets/login-memory.jpg" mode="aspectFill" aria-hidden="true"></image>
+  <view class="login-overlay"></view>
+  <image class="login-paper" src="/assets/paper-texture.png" mode="scaleToFill" aria-hidden="true"></image>
   <view class="login-brand">
+    <text class="login-kicker">口述人生 · 留存家史</text>
     <text class="login-name">桑榆录</text>
-    <text class="login-entry">工作人员入口</text>
+    <view class="login-rule"></view>
+    <text class="login-entry">工作人员采集端</text>
   </view>
   <view class="login-state">
     <view wx:if="{{loading}}" class="login-indicator"></view>

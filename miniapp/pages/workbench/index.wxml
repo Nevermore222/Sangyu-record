@@ -1,7 +1,12 @@
 <view class="page workbench">
-  <view class="page-head">
-    <text class="page-title">今日工作</text>
-    <text class="page-meta">按材料缺口与处理状态排序</text>
+  <view class="workbench-hero">
+    <image class="workbench-backdrop" src="/assets/workbench-memory.jpg" mode="aspectFill" aria-hidden="true"></image>
+    <view class="workbench-hero__shade"></view>
+    <view class="page-head workbench-head">
+      <text class="workbench-kicker">口述档案工作簿</text>
+      <text class="page-title">今日工作</text>
+      <text class="page-meta">按材料缺口与处理状态排序</text>
+    </view>
   </view>
   <view wx:if="{{loading}}" class="loading">正在载入工作台</view>
   <empty-state wx:elif="{{error}}" title="工作台加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>

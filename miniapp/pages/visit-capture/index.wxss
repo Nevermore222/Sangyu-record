@@ -1,11 +1,20 @@
-.capture-page { background: #fff; }
-.capture-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10rpx; }
-.capture-tool { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 128rpx; margin: 0; padding: 0 4rpx; border: 1rpx solid #cfd3cf; border-radius: 6rpx; background: #fff; color: #3f4540; font-size: 21rpx; line-height: 1.2; box-sizing: border-box; }
-.capture-tool--recording { border-color: #7d2f2a; background: #f9eeee; color: #7d2f2a; }
-.record-icon { width: 28rpx; height: 28rpx; margin-bottom: 14rpx; border-radius: 50%; background: #7d2f2a; }
+.capture-page { background: var(--paper); }
+.capture-intro { margin-bottom: 30rpx; padding-bottom: 28rpx; border-bottom: 1rpx solid var(--line); }
+.capture-section-title { margin-top: 0; }
+.capture-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; }
+.capture-tool { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; width: 100%; min-width: 0; height: 168rpx; margin: 0; padding: 22rpx 24rpx; border: 1rpx solid var(--line); border-radius: 8rpx; background: #fff; color: var(--ink); font-size: 25rpx; font-weight: 600; line-height: 1.25; text-align: left; box-sizing: border-box; }
+.capture-tool:active { background: var(--paper-deep); opacity: 1; }
+.capture-tool--audio { border-color: #d7bbb6; background: #fbf4f1; }
+.capture-tool--recording { border-color: var(--burgundy); background: #f8eae7; color: var(--burgundy); }
+.capture-tool__icon { display: flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; color: var(--green); }
+.capture-tool--audio .capture-tool__icon { color: var(--burgundy); }
+.capture-tool__copy { display: block; width: 100%; min-width: 0; }
+.capture-tool__title { display: block; overflow-wrap: anywhere; }
+.capture-tool__meta { display: block; margin-top: 6rpx; color: var(--muted); font-size: 20rpx; font-weight: 400; line-height: 1.35; overflow-wrap: anywhere; }
+.record-icon { width: 25rpx; height: 25rpx; border-radius: 50%; background: var(--burgundy); }
 .capture-tool--recording .record-icon { border-radius: 4rpx; }
-.tool-symbol { height: 42rpx; margin-bottom: 8rpx; font-size: 36rpx; line-height: 42rpx; }
-.notes-field { margin-top: 36rpx; padding-top: 24rpx; border-top: 1rpx solid #dfe2df; }
-.notes-field textarea { width: 100%; min-height: 150rpx; padding: 18rpx; border: 1rpx solid #cfd3cf; border-radius: 6rpx; font-size: 25rpx; line-height: 1.6; box-sizing: border-box; }
-.upload-summary { display: flex; align-items: center; justify-content: space-between; margin-top: 24rpx; color: #656b66; font-size: 24rpx; }
-.upload-summary button { width: 180rpx; height: 68rpx; margin: 0; border: 1rpx solid #315e4c; border-radius: 6rpx; background: #fff; color: #315e4c; font-size: 24rpx; line-height: 66rpx; }
+.tool-symbol { font-size: 36rpx; font-weight: 400; line-height: 40rpx; }
+.notes-field { margin-top: 40rpx; padding-top: 28rpx; border-top: 1rpx solid var(--line); }
+.notes-field textarea { width: 100%; height: 220rpx; padding: 20rpx; border: 1rpx solid #d1d0ca; border-radius: 8rpx; background: #fff; font-size: 25rpx; line-height: 1.65; box-sizing: border-box; }
+.upload-summary { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 24rpx; color: var(--muted); font-size: 24rpx; }
+.upload-summary button { flex: 0 0 180rpx; width: 180rpx; height: 68rpx; margin: 0; border: 1rpx solid var(--green); border-radius: 8rpx; background: #fff; color: var(--green); font-size: 24rpx; line-height: 66rpx; }

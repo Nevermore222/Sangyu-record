@@ -1,9 +1,9 @@
-.asset-row { display: flex; align-items: center; min-height: 104rpx; border-bottom: 1rpx solid #dfe2df; }
-.asset-kind { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx; margin-right: 18rpx; border: 1rpx solid #c9ceca; border-radius: 6rpx; color: #315e4c; font-size: 22rpx; }
-.asset-kind--photo { color: #7d2f2a; }
+.asset-row { display: flex; align-items: center; min-height: 108rpx; border-bottom: 1rpx solid #dddcd5; }
+.asset-kind { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx; margin-right: 18rpx; border: 1rpx solid #c9ceca; border-radius: 8rpx; color: #315c49; font-size: 22rpx; }
+.asset-kind--photo { color: #7c302c; }
 .asset-main { flex: 1; min-width: 0; }
-.asset-name { display: block; color: #252a27; font-size: 26rpx; font-weight: 600; overflow-wrap: anywhere; }
+.asset-name { display: block; color: #242824; font-size: 26rpx; font-weight: 600; overflow-wrap: anywhere; }
 .asset-name--input { width: 100%; min-height: 48rpx; }
 .asset-meta { display: block; margin-top: 6rpx; color: #656b66; font-size: 22rpx; line-height: 1.4; }
-.asset-association { display: block; margin-top: 7rpx; color: #315e4c; font-size: 21rpx; line-height: 1.4; }
-.asset-remove { width: 64rpx; height: 64rpx; margin: 0 0 0 12rpx; padding: 0; border-radius: 50%; background: #fff; color: #7d2f2a; font-size: 36rpx; line-height: 60rpx; }
+.asset-association { display: block; margin-top: 7rpx; color: #315c49; font-size: 21rpx; line-height: 1.4; }
+.asset-remove { width: 64rpx; height: 64rpx; margin: 0 0 0 12rpx; padding: 0; border-radius: 50%; background: #fbfaf6; color: #7c302c; font-size: 36rpx; line-height: 60rpx; }

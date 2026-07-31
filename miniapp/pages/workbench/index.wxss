@@ -1,12 +1,17 @@
-.workbench { background: #fff; }
-.count-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 -8rpx 12rpx; padding: 24rpx 0; border-top: 1rpx solid #dfe2df; border-bottom: 1rpx solid #dfe2df; }
+.workbench { background: var(--paper); padding-top: 24rpx; }
+.workbench-hero { position: relative; overflow: hidden; min-height: 260rpx; margin: -24rpx -32rpx 30rpx; }
+.workbench-backdrop { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.workbench-hero__shade { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(244, 239, 227, 0.84); pointer-events: none; }
+.workbench-head { position: relative; z-index: 1; margin: 0; padding: 40rpx 32rpx 34rpx; }
+.workbench-kicker { display: block; margin-bottom: 22rpx; color: var(--burgundy); font-size: 21rpx; }
+.count-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 12rpx; padding: 24rpx 0; border-top: 1rpx solid var(--line); border-bottom: 1rpx solid var(--line); }
 .count-cell { display: flex; flex-direction: column; align-items: center; min-width: 0; border-right: 1rpx solid #e8eae8; }
 .count-cell:last-child { border-right: 0; }
-.count-value { color: #252a27; font-family: "Songti SC", serif; font-size: 44rpx; line-height: 1.2; }
-.count-value--green { color: #315e4c; }
-.count-value--burgundy { color: #7d2f2a; }
+.count-value { color: var(--ink); font-family: "Songti SC", serif; font-size: 44rpx; line-height: 1.2; }
+.count-value--green { color: var(--green); }
+.count-value--burgundy { color: var(--burgundy); }
 .count-value--muted { color: #747a75; }
-.count-label { margin-top: 8rpx; color: #656b66; font-size: 21rpx; white-space: nowrap; }
+.count-label { margin-top: 8rpx; color: var(--muted); font-size: 21rpx; white-space: nowrap; }
 .section-head { margin-top: 16rpx; }
 .section-head--action { display: flex; align-items: center; justify-content: space-between; }
-.section-link { color: #7d2f2a; font-size: 24rpx; }
+.section-link { color: var(--burgundy); font-size: 24rpx; }

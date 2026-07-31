@@ -1,8 +1,8 @@
-.visit-prepare { background: #fff; }
+.visit-prepare { background: var(--paper); }
 .picker-value { display: flex; justify-content: space-between; align-items: center; min-height: 64rpx; }
 .field textarea { width: 100%; min-height: 108rpx; line-height: 1.6; }
-.plan-choice { display: flex; align-items: flex-start; padding: 24rpx 0; border-bottom: 1rpx solid #dfe2df; }
+.plan-choice { display: flex; align-items: flex-start; padding: 24rpx 0; border-bottom: 1rpx solid var(--line); }
 .plan-choice checkbox { margin: 4rpx 18rpx 0 0; transform: scale(0.84); }
 .plan-choice__copy { flex: 1; min-width: 0; }
 .plan-choice__head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; font-size: 28rpx; font-weight: 600; }
-.plan-choice__prompt { display: block; margin-top: 10rpx; color: #656b66; font-size: 24rpx; line-height: 1.6; }
+.plan-choice__prompt { display: block; margin-top: 10rpx; color: var(--muted); font-size: 24rpx; line-height: 1.6; overflow-wrap: anywhere; }

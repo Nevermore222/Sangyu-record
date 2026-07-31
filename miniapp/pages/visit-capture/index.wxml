@@ -2,12 +2,13 @@
   <view wx:if="{{loading}}" class="loading">正在恢复现场物料</view>
   <empty-state wx:elif="{{error && !visit}}" title="走访加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
   <block wx:elif="{{visit}}">
-    <view class="page-head"><text class="page-title">第 {{visit.sequence}} 次走访</text><text class="page-meta">{{visit.location}} · 本轮可采集多段录音和多张照片</text></view>
+    <view class="page-head capture-intro"><text class="page-title">第 {{visit.sequence}} 次走访</text><text class="page-meta">{{visit.location}} · 本轮可采集多段录音和多张照片</text></view>
+    <text class="section-title capture-section-title">开始采集</text>
     <view class="capture-tools">
-      <button class="capture-tool {{recording ? 'capture-tool--recording' : ''}}" disabled="{{uploading || submitting}}" bindtap="toggleRecord"><view class="record-icon"></view><text>{{recording ? '结束录音' : '现场录音'}}</text></button>
-      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" bindtap="chooseAudio"><text class="tool-symbol">↥</text><text>导入音频</text></button>
-      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="camera" bindtap="choosePhoto"><text class="tool-symbol">＋</text><text>拍摄照片</text></button>
-      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="album" bindtap="choosePhoto"><text class="tool-symbol">▦</text><text>相册照片</text></button>
+      <button class="capture-tool capture-tool--audio {{recording ? 'capture-tool--recording' : ''}}" disabled="{{uploading || submitting}}" bindtap="toggleRecord"><view class="capture-tool__icon"><view class="record-icon"></view></view><view class="capture-tool__copy"><text class="capture-tool__title">{{recording ? '结束录音' : '现场录音'}}</text><text class="capture-tool__meta">{{recording ? '正在记录，点击保存' : '直接开始口述记录'}}</text></view></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" bindtap="chooseAudio"><view class="capture-tool__icon"><text class="tool-symbol">↥</text></view><view class="capture-tool__copy"><text class="capture-tool__title">导入音频</text><text class="capture-tool__meta">选择微信中的录音</text></view></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="camera" bindtap="choosePhoto"><view class="capture-tool__icon"><text class="tool-symbol">＋</text></view><view class="capture-tool__copy"><text class="capture-tool__title">拍摄照片</text><text class="capture-tool__meta">拍摄老照片或物件</text></view></button>
+      <button class="capture-tool" disabled="{{recording || uploading || submitting}}" data-source="album" bindtap="choosePhoto"><view class="capture-tool__icon"><text class="tool-symbol">▦</text></view><view class="capture-tool__copy"><text class="capture-tool__title">相册照片</text><text class="capture-tool__meta">从手机相册中选择</text></view></button>
     </view>
 
     <text class="section-title">待上传物料</text>

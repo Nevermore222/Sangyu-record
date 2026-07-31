@@ -8,7 +8,8 @@
   gap: 20rpx;
   min-height: 128rpx;
   padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid #dfe2df;
-  background: rgba(255, 255, 255, 0.97);
+  border-top: 1rpx solid #dddcd5;
+  background: rgba(251, 250, 246, 0.97);
+  box-shadow: 0 -8rpx 24rpx rgba(41, 45, 41, 0.04);
   box-sizing: border-box;
 }

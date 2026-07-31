@@ -2,8 +2,8 @@
   <view wx:if="{{loading}}" class="loading">正在读取回忆录成果</view>
   <empty-state wx:elif="{{error && !artifact}}" title="成果加载失败" detail="{{error}}" action-label="重新加载" bind:action="load"></empty-state>
   <block wx:elif="{{artifact && project}}">
-    <view class="result-head"><text class="result-kicker">回忆录 PDF · 第 {{artifact.version}} 版</text><text class="page-title">{{project.display_name}}的人生故事</text><text class="result-meta">{{sizeLabel}} · 已完成自动编写与排版</text></view>
-    <view class="book-preview"><view class="book-rule"></view><text class="book-title">{{project.display_name}}</text><text class="book-edition">人生回忆录</text><view class="book-seal">桑榆录</view></view>
+    <view class="result-hero"><image class="result-backdrop" src="/assets/result-memory.jpg" mode="aspectFill" aria-hidden="true"></image><view class="result-hero__shade"></view><view class="result-head"><text class="result-kicker">回忆录 PDF · 第 {{artifact.version}} 版</text><text class="page-title">{{project.display_name}}的人生故事</text><text class="result-meta">{{sizeLabel}} · 已完成自动编写与排版</text></view></view>
+    <view class="book-preview"><image class="book-paper" src="/assets/paper-texture.png" mode="scaleToFill" aria-hidden="true"></image><view class="book-content"><view class="book-rule"></view><text class="book-title">{{project.display_name}}</text><text class="book-edition">人生回忆录</text><view class="book-seal">桑榆录</view></view></view>
     <view class="delivery-row"><text>文件格式</text><text>PDF</text></view>
     <view class="delivery-row"><text>版本</text><text>第 {{artifact.version}} 版</text></view>
     <view class="delivery-row"><text>文件大小</text><text>{{sizeLabel}}</text></view>

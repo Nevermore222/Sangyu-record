@@ -1,23 +1,23 @@
-.project-page { background: #fff; }
-.project-head { display: flex; align-items: flex-start; gap: 20rpx; padding: 8rpx 0 30rpx; border-bottom: 1rpx solid #dfe2df; }
+.project-page { background: var(--paper); }
+.project-head { display: flex; align-items: flex-start; gap: 20rpx; padding: 8rpx 0 30rpx; border-bottom: 1rpx solid var(--line); }
 .project-identity { flex: 1; min-width: 0; }
-.consent-line { display: flex; justify-content: space-between; padding: 24rpx 0; border-bottom: 1rpx solid #dfe2df; color: #656b66; font-size: 24rpx; }
-.consent-value { color: #315e4c; }
-.plan-row { padding: 24rpx 0; border-bottom: 1rpx solid #dfe2df; }
+.consent-line { display: flex; justify-content: space-between; gap: 20rpx; padding: 24rpx 0; border-bottom: 1rpx solid var(--line); color: var(--muted); font-size: 24rpx; }
+.consent-value { color: var(--green); text-align: right; }
+.plan-row { padding: 24rpx 0; border-bottom: 1rpx solid var(--line); }
 .plan-copy { min-width: 0; }
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .plan-category { font-size: 28rpx; font-weight: 600; }
-.plan-prompt { display: block; margin-top: 12rpx; color: #5f6560; font-size: 24rpx; line-height: 1.65; }
-.plan-gap { display: block; margin-top: 10rpx; color: #7d2f2a; font-size: 23rpx; line-height: 1.55; }
+.plan-prompt { display: block; margin-top: 12rpx; color: var(--muted); font-size: 24rpx; line-height: 1.65; overflow-wrap: anywhere; }
+.plan-gap { display: block; margin-top: 10rpx; color: var(--burgundy); font-size: 23rpx; line-height: 1.55; overflow-wrap: anywhere; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; }
-.section-count { color: #656b66; font-size: 23rpx; }
-.visit-row { display: flex; align-items: center; min-height: 116rpx; border-bottom: 1rpx solid #dfe2df; }
-.visit-sequence { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx; margin-right: 18rpx; border: 1rpx solid #c9ceca; border-radius: 50%; color: #315e4c; font-family: "Songti SC", serif; font-size: 25rpx; }
+.section-count { color: var(--muted); font-size: 23rpx; }
+.visit-row { display: flex; align-items: center; min-height: 116rpx; border-bottom: 1rpx solid var(--line); }
+.visit-sequence { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx; margin-right: 18rpx; border: 1rpx solid #c9ceca; border-radius: 50%; color: var(--green); font-family: "Songti SC", serif; font-size: 25rpx; }
 .visit-copy { flex: 1; min-width: 0; }
-.analysis-band { margin-top: 32rpx; padding: 2rpx 0 28rpx; border-top: 2rpx solid #315e4c; border-bottom: 1rpx solid #dfe2df; }
+.analysis-band { margin-top: 32rpx; padding: 2rpx 0 28rpx; border-top: 2rpx solid var(--green); border-bottom: 1rpx solid var(--line); }
 .analysis-summary { display: block; color: #414642; font-size: 26rpx; line-height: 1.7; }
-.analysis-meta { display: block; margin-top: 12rpx; color: #7d2f2a; font-size: 23rpx; }
-.workflow-line { display: flex; align-items: center; margin-top: 30rpx; padding: 24rpx 0; color: #315e4c; font-size: 25rpx; }
-.workflow-dot { width: 16rpx; height: 16rpx; margin-right: 16rpx; border-radius: 50%; background: #315e4c; }
-.artifact-row { display: flex; align-items: center; justify-content: space-between; min-height: 108rpx; margin-top: 18rpx; padding: 0 20rpx; border: 1rpx solid #cfd3cf; border-radius: 6rpx; }
-.artifact-action { color: #7d2f2a; font-size: 24rpx; }
+.analysis-meta { display: block; margin-top: 12rpx; color: var(--burgundy); font-size: 23rpx; }
+.workflow-line { display: flex; align-items: center; margin-top: 30rpx; padding: 24rpx 0; color: var(--green); font-size: 25rpx; }
+.workflow-dot { width: 16rpx; height: 16rpx; margin-right: 16rpx; border-radius: 50%; background: var(--green); }
+.artifact-row { display: flex; align-items: center; justify-content: space-between; min-height: 108rpx; margin-top: 18rpx; padding: 0 20rpx; border: 1rpx solid #cfd3cf; border-left: 5rpx solid var(--burgundy); border-radius: 8rpx; background: #fff; }
+.artifact-action { color: var(--burgundy); font-size: 24rpx; }

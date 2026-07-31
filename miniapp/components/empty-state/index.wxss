@@ -3,9 +3,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 360rpx;
-  padding: 64rpx 40rpx;
-  color: #656b66;
+  min-height: 300rpx;
+  padding: 56rpx 40rpx;
+  color: #686d68;
   text-align: center;
   box-sizing: border-box;
 }
@@ -14,24 +14,24 @@
   width: 56rpx;
   height: 56rpx;
   margin-bottom: 22rpx;
-  border: 1rpx solid #cfd3cf;
+  border: 1rpx solid #d1d0ca;
   border-radius: 50%;
   color: #8d928e;
   font-size: 28rpx;
   line-height: 52rpx;
 }
 
-.empty-state__title { color: #282c29; font-size: 30rpx; font-weight: 600; }
+.empty-state__title { color: #242824; font-size: 29rpx; font-weight: 600; overflow-wrap: anywhere; }
 .empty-state__detail { max-width: 520rpx; margin-top: 12rpx; font-size: 24rpx; line-height: 1.6; }
 
 .empty-state__action {
   min-width: 220rpx;
   height: 76rpx;
   margin-top: 32rpx;
-  border: 1rpx solid #252a27;
-  border-radius: 6rpx;
-  background: #ffffff;
-  color: #252a27;
+  border: 1rpx solid #242824;
+  border-radius: 8rpx;
+  background: #fbfaf6;
+  color: #242824;
   font-size: 26rpx;
   line-height: 74rpx;
 }
