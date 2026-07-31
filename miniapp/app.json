@@ -21,7 +21,8 @@
   "usingComponents": {
     "status-tag": "/components/status-tag/index",
     "empty-state": "/components/empty-state/index",
-    "action-bar": "/components/action-bar/index"
+    "action-bar": "/components/action-bar/index",
+    "project-row": "/components/project-row/index"
   },
   "tabBar": {
     "color": "#747a75",
