@@ -20,7 +20,7 @@ Page({
     ]
   },
 
-  onLoad() { void this.load(true) },
+  onShow() { void this.load(true) },
   onUnload() { if (searchTimer !== undefined) clearTimeout(searchTimer) },
   onPullDownRefresh() { void this.load(true).finally(() => wx.stopPullDownRefresh()) },
   onReachBottom() { if (this.data.nextCursor) void this.load(false) },
