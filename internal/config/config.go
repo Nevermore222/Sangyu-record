@@ -35,6 +35,7 @@ type Config struct {
 	WeChatAppID             string
 	WeChatAppSecret         string
 	StaffOpenIDAllowlist    []string
+	StaffAutoEnroll         bool
 	SessionSecret           string
 	SessionTTL              time.Duration
 }
@@ -109,8 +110,18 @@ func Load() (Config, error) {
 			cfg.StaffOpenIDAllowlist = append(cfg.StaffOpenIDAllowlist, openID)
 		}
 	}
-	if cfg.AuthMode == "wechat" && (cfg.WeChatAppID == "" || cfg.WeChatAppSecret == "" || len(cfg.StaffOpenIDAllowlist) == 0) {
-		return Config{}, errors.New("WECHAT_APP_ID, WECHAT_APP_SECRET, and STAFF_OPENID_ALLOWLIST are required in wechat mode")
+	if value := strings.TrimSpace(os.Getenv("STAFF_AUTO_ENROLL")); value != "" {
+		autoEnroll, err := strconv.ParseBool(value)
+		if err != nil {
+			return Config{}, errors.New("STAFF_AUTO_ENROLL must be true or false")
+		}
+		cfg.StaffAutoEnroll = autoEnroll
+	}
+	if cfg.AuthMode == "wechat" && (cfg.WeChatAppID == "" || cfg.WeChatAppSecret == "") {
+		return Config{}, errors.New("WECHAT_APP_ID and WECHAT_APP_SECRET are required in wechat mode")
+	}
+	if cfg.AuthMode == "wechat" && !cfg.StaffAutoEnroll && len(cfg.StaffOpenIDAllowlist) == 0 {
+		return Config{}, errors.New("STAFF_OPENID_ALLOWLIST is required when STAFF_AUTO_ENROLL is false in wechat mode")
 	}
 	return cfg, nil
 }

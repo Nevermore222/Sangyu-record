@@ -28,6 +28,7 @@ x-app-environment: &app-environment
   WECHAT_APP_ID: ${WECHAT_APP_ID}
   WECHAT_APP_SECRET: ${WECHAT_APP_SECRET}
   STAFF_OPENID_ALLOWLIST: ${STAFF_OPENID_ALLOWLIST}
+  STAFF_AUTO_ENROLL: ${STAFF_AUTO_ENROLL:-false}
 
 services:
   mock-provider:

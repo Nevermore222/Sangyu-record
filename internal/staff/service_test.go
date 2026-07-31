@@ -91,6 +91,22 @@ func TestWechatLoginRejectsOpenIDOutsideAllowlist(t *testing.T) {
 	}
 }
 
+func TestWechatLoginAutoEnrollsOpenIDOutsideAllowlist(t *testing.T) {
+	repo := newMemoryRepository()
+	service := NewService(repo, fakeExchanger{openID: "experience-user"}, Config{
+		Mode: "wechat", SessionTTL: time.Hour, SessionSecret: []byte("test-session-secret"),
+		AllowedOpenIDs: map[string]struct{}{"allowed": {}}, AutoEnroll: true,
+	}, time.Now)
+
+	login, err := service.LoginWechat(context.Background(), "temporary-code")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if login.Token == "" || login.Staff.WeChatOpenID != "experience-user" {
+		t.Fatalf("login = %#v", login)
+	}
+}
+
 func TestLogoutRevokesSession(t *testing.T) {
 	repo := newMemoryRepository()
 	service := NewService(repo, nil, Config{

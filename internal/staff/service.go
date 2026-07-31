@@ -28,6 +28,7 @@ type CodeExchanger interface {
 type Config struct {
 	Mode           string
 	AllowedOpenIDs map[string]struct{}
+	AutoEnroll     bool
 	SessionTTL     time.Duration
 	SessionSecret  []byte
 }
@@ -64,7 +65,7 @@ func (s *Service) LoginWechat(ctx context.Context, code string) (LoginResult, er
 	if err != nil {
 		return LoginResult{}, err
 	}
-	if _, allowed := s.config.AllowedOpenIDs[openID]; !allowed {
+	if _, allowed := s.config.AllowedOpenIDs[openID]; !allowed && !s.config.AutoEnroll {
 		return LoginResult{}, ErrForbidden
 	}
 	return s.login(ctx, openID, "微信采集员")

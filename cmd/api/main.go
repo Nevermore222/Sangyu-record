@@ -57,6 +57,7 @@ func main() {
 	staffService := staff.NewService(staffRepo, codeExchanger, staff.Config{
 		Mode:           cfg.AuthMode,
 		AllowedOpenIDs: allowedOpenIDs,
+		AutoEnroll:     cfg.StaffAutoEnroll,
 		SessionTTL:     cfg.SessionTTL,
 		SessionSecret:  []byte(cfg.SessionSecret),
 	}, time.Now)

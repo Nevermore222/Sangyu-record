@@ -25,14 +25,14 @@ powershell -ExecutionPolicy Bypass -File scripts/miniapp-local.ps1
 
 ```bash
 cp deploy/production/.env.production.example deploy/production/.env.production
-# 编辑全部 CHANGE_ME、域名、微信凭据、员工 OpenID 和 Provider 配置
+# 编辑全部 CHANGE_ME、域名、微信凭据、员工访问策略和 Provider 配置
 docker compose --env-file deploy/production/.env.production \
   -f deploy/production/compose.yaml config
 docker compose --env-file deploy/production/.env.production \
   -f deploy/production/compose.yaml up -d --build --wait
 ```
 
-`migrate` 容器在 API 和 Worker 启动前执行 Goose。生产固定使用 `AUTH_MODE=wechat`，只有 `STAFF_OPENID_ALLOWLIST` 中的员工可登录。`PROVIDER_ALLOWED_HOSTS` 必须是 Provider 的精确 `host:port` 列表；回调地址为 `https://API_DOMAIN/v1/provider-callbacks/{kind}/{jobID}`。
+`migrate` 容器在 API 和 Worker 启动前执行 Goose。生产固定使用 `AUTH_MODE=wechat`。默认只有 `STAFF_OPENID_ALLOWLIST` 中的员工可登录；体验阶段可设置 `STAFF_AUTO_ENROLL=true`，使通过微信体验成员审批的用户在首次登录时自动建立独立工作人员账号。正式公开发布前应恢复为 `false`，并使用明确的工作人员白名单或后续管理后台。`PROVIDER_ALLOWED_HOSTS` 必须是 Provider 的精确 `host:port` 列表；回调地址为 `https://API_DOMAIN/v1/provider-callbacks/{kind}/{jobID}`。
 
 `POSTGRES_PASSWORD` 与 `REDIS_PASSWORD` 会进入连接 URI，只能使用 `A-Z a-z 0-9 . _ ~ -`。`FILES_DOMAIN` 仅放行签名对象上传/下载所需的 GET、HEAD、PUT，并拒绝 MinIO 管理、健康和指标路径；MinIO 控制台不对公网开放。
 

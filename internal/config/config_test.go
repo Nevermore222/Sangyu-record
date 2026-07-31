@@ -37,6 +37,23 @@ func TestLoadRequiresWechatCredentialsInWechatMode(t *testing.T) {
 	}
 }
 
+func TestLoadAllowsWechatAutoEnrollWithoutAllowlist(t *testing.T) {
+	setRequiredBaseEnvironment(t)
+	t.Setenv("AUTH_MODE", "wechat")
+	t.Setenv("WECHAT_APP_ID", "wx-test-app")
+	t.Setenv("WECHAT_APP_SECRET", "test-secret")
+	t.Setenv("STAFF_OPENID_ALLOWLIST", "")
+	t.Setenv("STAFF_AUTO_ENROLL", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.StaffAutoEnroll {
+		t.Fatal("StaffAutoEnroll = false, want true")
+	}
+}
+
 func TestLoadParsesStaffAuthentication(t *testing.T) {
 	setRequiredBaseEnvironment(t)
 	t.Setenv("STAFF_OPENID_ALLOWLIST", " collector-1,collector-2 ")
